@@ -53,14 +53,14 @@ const DoctorQRScanner = () => {
       
       // Try to find patient in mock data first (offline/dev)
       let patient = mockPatients.find((p) => p.email.toLowerCase() === patientEmail)
-
+      
       // If not found in mock data, query Firestore by email
       if (!patient && db) {
         try {
           const usersRef = collection(db, 'users')
-          const q = query(usersRef, where('email', '==', patientEmail), where('role', '==', 'patient'))
-          const querySnapshot = await getDocs(q)
-          if (!querySnapshot.empty) {
+            const q = query(usersRef, where('email', '==', patientEmail), where('role', '==', 'patient'))
+            const querySnapshot = await getDocs(q)
+            if (!querySnapshot.empty) {
             const patientDoc = querySnapshot.docs[0]
             const userData = patientDoc.data()
             patient = { id: patientDoc.id, uid: patientDoc.id, ...userData }

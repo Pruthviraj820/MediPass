@@ -82,46 +82,46 @@ const MedicalTimeline = ({ patientId }) => {
         {records.map((record, index) => {
           const recordDate = record.createdAt?.toDate ? record.createdAt.toDate() : new Date(record.date)
           return (
-            <View key={record.id} style={styles.timelineItem}>
-              <View style={styles.timelineLine} />
-              <View style={[styles.timelineDot, index === 0 && styles.timelineDotActive]} />
-              
-              <View style={styles.card}>
-                <View style={styles.cardHeader}>
-                  <View style={styles.dateContainer}>
-                    <Ionicons name="calendar" size={20} color={colors.primary[600]} />
-                    <Text style={styles.date}>
+          <View key={record.id} style={styles.timelineItem}>
+            <View style={styles.timelineLine} />
+            <View style={[styles.timelineDot, index === 0 && styles.timelineDotActive]} />
+            
+            <View style={styles.card}>
+              <View style={styles.cardHeader}>
+                <View style={styles.dateContainer}>
+                  <Ionicons name="calendar" size={20} color={colors.primary[600]} />
+                  <Text style={styles.date}>
                       {format(recordDate, 'MMM dd, yyyy')}
-                    </Text>
-                  </View>
-                  <View style={styles.doctorContainer}>
-                    <Ionicons name="person" size={16} color={colors.neutral[400]} />
-                    <Text style={styles.doctor}>{record.doctorName}</Text>
-                  </View>
+                  </Text>
                 </View>
-                
-                <Text style={styles.diagnosis}>{record.diagnosis}</Text>
-                
+                <View style={styles.doctorContainer}>
+                  <Ionicons name="person" size={16} color={colors.neutral[400]} />
+                    <Text style={styles.doctor}>{record.doctorName}</Text>
+                </View>
+              </View>
+              
+              <Text style={styles.diagnosis}>{record.diagnosis}</Text>
+              
                 {(record.prescription || record.dosage) && (
-                  <View style={styles.prescriptionContainer}>
-                    <Text style={styles.prescriptionLabel}>Prescription:</Text>
+                <View style={styles.prescriptionContainer}>
+                  <Text style={styles.prescriptionLabel}>Prescription:</Text>
                     {record.prescription && (
-                      <Text style={styles.prescription}>{record.prescription}</Text>
+                  <Text style={styles.prescription}>{record.prescription}</Text>
                     )}
                     {record.dosage && (
                       <Text style={styles.prescription}>Dosage: {record.dosage}</Text>
                     )}
-                  </View>
-                )}
-                
+                </View>
+              )}
+              
                 {record.instructions && (
                   <View style={styles.instructionsContainer}>
                     <Text style={styles.instructionsLabel}>Instructions:</Text>
                     <Text style={styles.instructions}>{record.instructions}</Text>
-                  </View>
-                )}
-              </View>
+                </View>
+              )}
             </View>
+          </View>
           )
         })}
       </View>

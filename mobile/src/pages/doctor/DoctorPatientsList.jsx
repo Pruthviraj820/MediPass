@@ -7,6 +7,7 @@ import {
   TouchableOpacity,
   ActivityIndicator,
   Alert,
+  TextInput,
 } from 'react-native'
 import { useNavigation } from '@react-navigation/native'
 import { Ionicons } from '@expo/vector-icons'
@@ -18,6 +19,8 @@ import { colors } from '../../constants/colors'
 const DoctorPatientsList = () => {
   const navigation = useNavigation()
   const [patients, setPatients] = useState([])
+  const [filteredPatients, setFilteredPatients] = useState([])
+  const [searchQuery, setSearchQuery] = useState('')
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
@@ -42,6 +45,7 @@ const DoctorPatientsList = () => {
           })
         })
         setPatients(patientsList)
+        setFilteredPatients(patientsList)
         setLoading(false)
       },
       (error) => {
@@ -54,6 +58,20 @@ const DoctorPatientsList = () => {
     // Cleanup listener on unmount
     return () => unsubscribe()
   }, [])
+
+  useEffect(() => {
+    if (searchQuery.trim() === '') {
+      setFilteredPatients(patients)
+    } else {
+      const query = searchQuery.toLowerCase()
+      const filtered = patients.filter((patient) => {
+        const name = (patient.name || '').toLowerCase()
+        const email = (patient.email || '').toLowerCase()
+        return name.includes(query) || email.includes(query)
+      })
+      setFilteredPatients(filtered)
+    }
+  }, [searchQuery, patients])
 
   const handlePatientPress = (patient) => {
     navigation.navigate('DoctorPatientProfile', {
@@ -83,15 +101,46 @@ const DoctorPatientsList = () => {
           <View style={styles.iconContainer}>
             <Ionicons name="people" size={32} color={colors.primary[600]} />
           </View>
-          <View>
+          <View style={styles.headerText}>
             <Text style={styles.title}>My Patients</Text>
             <Text style={styles.subtitle}>
-              {patients.length} {patients.length === 1 ? 'patient' : 'patients'} total
+              {filteredPatients.length} {filteredPatients.length === 1 ? 'patient' : 'patients'}
+              {searchQuery ? ' found' : ` of ${patients.length} total`}
             </Text>
           </View>
         </View>
 
-        {patients.length === 0 ? (
+        {/* Search Bar */}
+        {patients.length > 0 && (
+          <View style={styles.searchContainer}>
+            <Ionicons name="search" size={20} color={colors.neutral[400]} style={styles.searchIcon} />
+            <TextInput
+              style={styles.searchInput}
+              placeholder="Search patients by name or email..."
+              value={searchQuery}
+              onChangeText={setSearchQuery}
+              placeholderTextColor={colors.neutral[400]}
+            />
+            {searchQuery.length > 0 && (
+              <TouchableOpacity
+                onPress={() => setSearchQuery('')}
+                style={styles.clearButton}
+              >
+                <Ionicons name="close-circle" size={20} color={colors.neutral[400]} />
+              </TouchableOpacity>
+            )}
+          </View>
+        )}
+
+        {filteredPatients.length === 0 && patients.length > 0 ? (
+          <View style={styles.emptyContainer}>
+            <Ionicons name="search-outline" size={80} color={colors.neutral[300]} />
+            <Text style={styles.emptyTitle}>No Patients Found</Text>
+            <Text style={styles.emptyText}>
+              Try adjusting your search query
+            </Text>
+          </View>
+        ) : patients.length === 0 ? (
           <View style={styles.emptyContainer}>
             <Ionicons name="people-outline" size={80} color={colors.neutral[300]} />
             <Text style={styles.emptyTitle}>No Patients Yet</Text>
@@ -108,7 +157,7 @@ const DoctorPatientsList = () => {
           </View>
         ) : (
           <View style={styles.patientsList}>
-            {patients.map((patient) => {
+            {filteredPatients.map((patient) => {
               const avatarLetter = (patient.name || patient.email || 'P')[0].toUpperCase()
               return (
                 <TouchableOpacity
@@ -159,7 +208,35 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 16,
-    marginBottom: 32,
+    marginBottom: 24,
+  },
+  headerText: {
+    flex: 1,
+  },
+  searchContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: colors.white,
+    borderRadius: 16,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    marginBottom: 24,
+    shadowColor: colors.black,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 4,
+  },
+  searchIcon: {
+    marginRight: 12,
+  },
+  searchInput: {
+    flex: 1,
+    fontSize: 16,
+    color: colors.neutral[900],
+  },
+  clearButton: {
+    marginLeft: 8,
   },
   iconContainer: {
     width: 56,

@@ -161,32 +161,32 @@ const DoctorDashboard = () => {
               <Text style={styles.emptySubtext}>Scan a QR code to add your first patient</Text>
             </View>
           ) : (
-            <View style={styles.patientsList}>
+          <View style={styles.patientsList}>
               {recentPatients.map((patient) => (
-                <TouchableOpacity
-                  key={patient.id}
-                  style={styles.patientItem}
+              <TouchableOpacity
+                key={patient.id}
+                style={styles.patientItem}
                   onPress={() => navigation.navigate('DoctorPatientProfile', {
                     patientId: patient.patientId || patient.id,
                     patientName: patient.name,
                     patientEmail: patient.email,
                   })}
-                >
-                  <View style={styles.patientAvatar}>
-                    <Text style={styles.patientAvatarText}>{patient.name[0]}</Text>
-                  </View>
-                  <View style={styles.patientInfo}>
-                    <Text style={styles.patientName}>{patient.name}</Text>
-                    <Text style={styles.patientDetails}>
+              >
+                <View style={styles.patientAvatar}>
+                  <Text style={styles.patientAvatarText}>{patient.name[0]}</Text>
+                </View>
+                <View style={styles.patientInfo}>
+                  <Text style={styles.patientName}>{patient.name}</Text>
+                  <Text style={styles.patientDetails}>
                       {patient.bloodGroup} {patient.allergies.length > 0 ? `| ${patient.allergies[0]}` : ''}
-                    </Text>
-                  </View>
-                  <View style={styles.viewButton}>
+                  </Text>
+                </View>
+                <View style={styles.viewButton}>
                     <Text style={styles.viewButtonText}>View</Text>
-                  </View>
-                </TouchableOpacity>
-              ))}
-            </View>
+                </View>
+              </TouchableOpacity>
+            ))}
+          </View>
           )}
         </View>
       </ScrollView>

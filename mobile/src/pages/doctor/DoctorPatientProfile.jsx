@@ -7,10 +7,11 @@ import {
   TouchableOpacity,
   ActivityIndicator,
   Alert,
+  Share,
 } from 'react-native'
 import { useRoute, useNavigation } from '@react-navigation/native'
 import { Ionicons } from '@expo/vector-icons'
-import { doc, getDoc, collection, query, onSnapshot, orderBy } from 'firebase/firestore'
+import { doc, getDoc, collection, query, onSnapshot, orderBy, getDocs } from 'firebase/firestore'
 import { format } from 'date-fns'
 import { db } from '../../services/firebase'
 import Navbar from '../../components/common/Navbar'
@@ -24,7 +25,9 @@ const DoctorPatientProfile = () => {
   
   const [patient, setPatient] = useState(null)
   const [prescriptions, setPrescriptions] = useState([])
+  const [medicalRecords, setMedicalRecords] = useState([])
   const [loading, setLoading] = useState(true)
+  const [downloading, setDownloading] = useState(false)
 
 
   useEffect(() => {
@@ -88,6 +91,20 @@ const DoctorPatientProfile = () => {
             console.error('Error loading prescriptions:', error)
           }
         )
+
+        // Load medical records for PDF
+        const medicalRecordsRef = collection(db, 'users', patientId, 'medicalRecords')
+        const recordsQuery = query(medicalRecordsRef, orderBy('createdAt', 'desc'))
+        const recordsSnapshot = await getDocs(recordsQuery)
+        const recordsList = []
+        recordsSnapshot.forEach((doc) => {
+          const data = doc.data()
+          recordsList.push({
+            id: doc.id,
+            ...data,
+          })
+        })
+        setMedicalRecords(recordsList)
       } catch (error) {
         console.error('Error loading patient data:', error)
         Alert.alert('Error', 'Failed to load patient data')
@@ -106,13 +123,95 @@ const DoctorPatientProfile = () => {
     }
   }, [patientId])
 
-  const handleDownloadRecords = () => {
-    // TODO: Implement PDF generation and download
-    Alert.alert(
-      'Download Records',
-      'PDF download functionality will be implemented soon.',
-      [{ text: 'OK' }]
-    )
+  const handleDownloadRecords = async () => {
+    if (!patient) return
+
+    try {
+      setDownloading(true)
+
+      // Generate text-based report
+      let reportText = `MEDICAL RECORDS REPORT\n`
+      reportText += `========================\n\n`
+      reportText += `Patient Information:\n`
+      reportText += `Name: ${patient.name}\n`
+      reportText += `Email: ${patient.email || 'N/A'}\n`
+      reportText += `Phone: ${patient.phone || 'N/A'}\n`
+      reportText += `Blood Group: ${patient.bloodGroup || 'N/A'}\n\n`
+
+      if (patient.allergies && patient.allergies.length > 0) {
+        reportText += `Allergies:\n`
+        patient.allergies.forEach(allergy => {
+          reportText += `  - ${allergy}\n`
+        })
+        reportText += `\n`
+      }
+
+      if (patient.medicalConditions && patient.medicalConditions.length > 0) {
+        reportText += `Medical Conditions:\n`
+        patient.medicalConditions.forEach(condition => {
+          reportText += `  - ${condition}\n`
+        })
+        reportText += `\n`
+      }
+
+      if (medicalRecords.length > 0) {
+        reportText += `Medical History:\n`
+        reportText += `========================\n\n`
+        medicalRecords.forEach((record, index) => {
+          const date = record.createdAt?.toDate ? format(record.createdAt.toDate(), 'MMM dd, yyyy') : 'Unknown date'
+          reportText += `${index + 1}. ${date}\n`
+          reportText += `   Doctor: ${record.doctorName || 'Unknown'}\n`
+          reportText += `   Diagnosis: ${record.diagnosis || 'N/A'}\n`
+          if (record.prescription) {
+            reportText += `   Prescription: ${record.prescription}\n`
+          }
+          if (record.dosage) {
+            reportText += `   Dosage: ${record.dosage}\n`
+          }
+          if (record.instructions) {
+            reportText += `   Instructions: ${record.instructions}\n`
+          }
+          reportText += `\n`
+        })
+      }
+
+      if (prescriptions.length > 0) {
+        reportText += `Prescriptions:\n`
+        reportText += `========================\n\n`
+        prescriptions.forEach((prescription, index) => {
+          const date = prescription.createdAt?.toDate ? format(prescription.createdAt.toDate(), 'MMM dd, yyyy') : 'Unknown date'
+          reportText += `${index + 1}. ${prescription.name || 'Unknown Medication'}\n`
+          reportText += `   Date: ${date}\n`
+          if (prescription.dosage) reportText += `   Dosage: ${prescription.dosage}\n`
+          if (prescription.frequency) reportText += `   Frequency: ${prescription.frequency}\n`
+          if (prescription.duration) reportText += `   Duration: ${prescription.duration}\n`
+          if (prescription.instructions) reportText += `   Instructions: ${prescription.instructions}\n`
+          reportText += `\n`
+        })
+      }
+
+      reportText += `\nGenerated on: ${format(new Date(), 'MMM dd, yyyy HH:mm')}\n`
+
+      // Share the report
+      try {
+        await Share.share({
+          message: reportText,
+          title: `${patient.name} - Medical Records`,
+        })
+      } catch (shareError) {
+        // If sharing fails, show the report in an alert
+        Alert.alert(
+          'Medical Records Report',
+          reportText.substring(0, 500) + (reportText.length > 500 ? '...' : ''),
+          [{ text: 'OK' }]
+        )
+      }
+    } catch (error) {
+      console.error('Error generating report:', error)
+      Alert.alert('Error', 'Failed to generate report')
+    } finally {
+      setDownloading(false)
+    }
   }
 
   if (loading) {
@@ -140,7 +239,7 @@ const DoctorPatientProfile = () => {
   }
 
   const avatarLetter = (patient.name || 'P')[0].toUpperCase()
-
+  
   return (
     <View style={styles.container}>
       <Navbar />
@@ -160,32 +259,41 @@ const DoctorPatientProfile = () => {
               </View>
             </View>
           </View>
-
-          <View style={styles.buttonRow}>
-            <TouchableOpacity style={styles.downloadButton} onPress={handleDownloadRecords}>
-              <Ionicons name="download" size={20} color={colors.white} />
-              <Text style={styles.downloadButtonText}>Download Records</Text>
-            </TouchableOpacity>
+          
+          <View style={styles.actionButtonsContainer}>
             <TouchableOpacity
-              style={styles.addButton}
+              style={styles.actionButton}
               onPress={() => navigation.navigate('DoctorAddDiagnosis', { patientId: patient.id, patientName: patient.name })}
             >
-              <Ionicons name="create" size={20} color={colors.primary[700]} />
-              <Text style={styles.addButtonText}>Add Diagnosis</Text>
+              <Ionicons name="create" size={20} color={colors.white} />
+              <Text style={styles.actionButtonText}>Add Diagnosis</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.actionButton, styles.actionButtonSecondary]}
+              onPress={() => navigation.navigate('DoctorPrescribeMedication', {
+                patientId: patient.id,
+                patientName: patient.name,
+                patientEmail: patient.email,
+              })}
+            >
+              <Ionicons name="medical" size={20} color={colors.primary[600]} />
+              <Text style={[styles.actionButtonText, styles.actionButtonTextSecondary]}>Prescribe</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.actionButton, styles.downloadButton]}
+              onPress={handleDownloadRecords}
+              disabled={downloading}
+            >
+              {downloading ? (
+                <ActivityIndicator color={colors.white} size="small" />
+              ) : (
+                <>
+                  <Ionicons name="download" size={20} color={colors.white} />
+                  <Text style={styles.actionButtonText}>Download</Text>
+                </>
+              )}
             </TouchableOpacity>
           </View>
-
-          <TouchableOpacity
-            style={styles.prescribeButton}
-            onPress={() => navigation.navigate('DoctorPrescribeMedication', {
-              patientId: patient.id,
-              patientName: patient.name,
-              patientEmail: patient.email,
-            })}
-          >
-            <Ionicons name="medical" size={20} color={colors.white} />
-            <Text style={styles.prescribeButtonText}>Prescribe Medication</Text>
-          </TouchableOpacity>
         </View>
 
         {/* Emergency Info */}
@@ -198,10 +306,10 @@ const DoctorPatientProfile = () => {
             <View style={styles.allergiesList}>
               {patient.allergies && patient.allergies.length > 0 ? (
                 patient.allergies.map((allergy, index) => (
-                  <View key={index} style={styles.allergyItem}>
-                    <View style={styles.allergyDot} />
-                    <Text style={styles.allergyText}>{allergy}</Text>
-                  </View>
+                <View key={index} style={styles.allergyItem}>
+                  <View style={styles.allergyDot} />
+                  <Text style={styles.allergyText}>{allergy}</Text>
+                </View>
                 ))
               ) : (
                 <Text style={styles.emptyText}>No known allergies</Text>
@@ -390,56 +498,38 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: colors.primary[600],
   },
-  buttonRow: {
+  actionButtonsContainer: {
     flexDirection: 'row',
-    gap: 12,
-    marginBottom: 12,
+    gap: 8,
+    flexWrap: 'wrap',
   },
-  downloadButton: {
+  actionButton: {
     flex: 1,
+    minWidth: '30%',
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: colors.primary[600],
-    paddingVertical: 16,
-    borderRadius: 16,
-    gap: 8,
+    paddingVertical: 14,
+    paddingHorizontal: 12,
+    borderRadius: 12,
+    gap: 6,
   },
-  downloadButtonText: {
+  actionButtonSecondary: {
+    backgroundColor: colors.white,
+    borderWidth: 1,
+    borderColor: colors.primary[300],
+  },
+  actionButtonText: {
     color: colors.white,
-    fontSize: 18,
+    fontSize: 14,
     fontWeight: '600',
   },
-  addButton: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: colors.primary[50],
-    borderWidth: 2,
-    borderColor: colors.primary[200],
-    paddingVertical: 16,
-    borderRadius: 16,
-    gap: 8,
+  actionButtonTextSecondary: {
+    color: colors.primary[600],
   },
-  addButtonText: {
-    color: colors.primary[700],
-    fontSize: 18,
-    fontWeight: '600',
-  },
-  prescribeButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
+  downloadButton: {
     backgroundColor: colors.success[600],
-    paddingVertical: 16,
-    borderRadius: 16,
-    gap: 8,
-  },
-  prescribeButtonText: {
-    color: colors.white,
-    fontSize: 18,
-    fontWeight: '600',
   },
   emergencyGrid: {
     flexDirection: 'row',

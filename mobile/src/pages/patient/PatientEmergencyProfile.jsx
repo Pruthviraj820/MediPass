@@ -49,44 +49,44 @@ const PatientEmergencyProfile = ({ navigation }) => {
       const unsubscribeDoc = onSnapshot(
         ref,
         async (snap) => {
-          try {
-            if (!snap.exists()) {
-              const newProfile = {
-                ...DEFAULT_PROFILE,
-                name: user.displayName || 'New Patient',
-                email: user.email || '',
+        try {
+          if (!snap.exists()) {
+            const newProfile = {
+              ...DEFAULT_PROFILE,
+              name: user.displayName || 'New Patient',
+              email: user.email || '',
                 createdAt: serverTimestamp(),
-              }
-
-              await setDoc(ref, newProfile, { merge: true })
-              setProfile(newProfile)
-              setLoading(false)
-              return
             }
 
-            const data = snap.data() || {}
+              await setDoc(ref, newProfile, { merge: true })
+            setProfile(newProfile)
+            setLoading(false)
+            return
+          }
 
-            setProfile({
-              name: data.name || DEFAULT_PROFILE.name,
-              email: data.email || '',
-              phone: data.phone || '',
-              role: data.role || 'patient',
-              bloodGroup: data.bloodGroup || 'Unknown',
-              allergies: Array.isArray(data.allergies) ? data.allergies : [],
+          const data = snap.data() || {}
+
+          setProfile({
+            name: data.name || DEFAULT_PROFILE.name,
+            email: data.email || '',
+            phone: data.phone || '',
+            role: data.role || 'patient',
+            bloodGroup: data.bloodGroup || 'Unknown',
+            allergies: Array.isArray(data.allergies) ? data.allergies : [],
               medicalConditions: Array.isArray(data.medicalConditions)
                 ? data.medicalConditions
                 : [],
               emergencyContacts: Array.isArray(data.emergencyContacts)
                 ? data.emergencyContacts
                 : [],
-            })
+          })
 
-            setLoading(false)
-          } catch (e) {
-            console.error('Profile load error:', e)
-            setProfile(null)
-            setLoading(false)
-          }
+          setLoading(false)
+        } catch (e) {
+          console.error('Profile load error:', e)
+          setProfile(null)
+          setLoading(false)
+        }
         },
         (error) => {
           console.error('onSnapshot error in PatientEmergencyProfile:', error)

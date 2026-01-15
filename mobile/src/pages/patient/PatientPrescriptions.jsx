@@ -86,7 +86,7 @@ const PatientPrescriptions = () => {
             </View>
           ) : (
             cards.map((prescription) => (
-              <View key={prescription.id} style={styles.card}>
+            <View key={prescription.id} style={styles.card}>
               <View style={styles.cardHeader}>
                 <Text style={styles.cardTitle}>{prescription.name}</Text>
                 <View

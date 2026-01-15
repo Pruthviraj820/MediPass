@@ -5,6 +5,7 @@
 import { initializeApp, getApps } from 'firebase/app'
 import { getAuth } from 'firebase/auth'
 import { getFirestore } from 'firebase/firestore'
+import { getStorage } from 'firebase/storage'
 
 // Your Firebase configuration
 const firebaseConfig = {
@@ -21,6 +22,7 @@ const firebaseConfig = {
 let app = null
 let auth = null
 let db = null
+let storage = null
 
 try {
   // Check if Firebase is already initialized
@@ -33,6 +35,7 @@ try {
   
   auth = getAuth(app)
   db = getFirestore(app)
+  storage = getStorage(app)
   
   console.log('✅ Firebase initialized successfully')
 } catch (error) {
@@ -41,5 +44,5 @@ try {
 }
 
 // Export Firebase instances
-export { app, auth, db }
+export { app, auth, db, storage }
 export default app

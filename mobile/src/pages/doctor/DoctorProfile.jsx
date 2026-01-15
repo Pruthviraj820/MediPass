@@ -133,7 +133,10 @@ const DoctorProfile = () => {
             <Ionicons name="chevron-forward" size={20} color={colors.neutral[400]} />
           </TouchableOpacity>
 
-          <TouchableOpacity style={styles.optionItem}>
+          <TouchableOpacity
+            style={styles.optionItem}
+            onPress={() => navigation.navigate('DoctorPrivacySecurity')}
+          >
             <View style={styles.optionLeft}>
               <View style={[styles.optionIcon, { backgroundColor: colors.success[100] }]}>
                 <Ionicons name="shield-checkmark" size={24} color={colors.success[600]} />
@@ -143,7 +146,10 @@ const DoctorProfile = () => {
             <Ionicons name="chevron-forward" size={20} color={colors.neutral[400]} />
           </TouchableOpacity>
 
-          <TouchableOpacity style={styles.optionItem}>
+          <TouchableOpacity
+            style={styles.optionItem}
+            onPress={() => navigation.navigate('DoctorNotifications')}
+          >
             <View style={styles.optionLeft}>
               <View style={[styles.optionIcon, { backgroundColor: colors.neutral[200] }]}>
                 <Ionicons name="notifications" size={24} color={colors.neutral[700]} />
@@ -158,7 +164,10 @@ const DoctorProfile = () => {
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Support</Text>
           
-          <TouchableOpacity style={styles.optionItem}>
+          <TouchableOpacity
+            style={styles.optionItem}
+            onPress={() => navigation.navigate('DoctorHelpCenter')}
+          >
             <View style={styles.optionLeft}>
               <View style={[styles.optionIcon, { backgroundColor: colors.primary[100] }]}>
                 <Ionicons name="help-circle" size={24} color={colors.primary[600]} />

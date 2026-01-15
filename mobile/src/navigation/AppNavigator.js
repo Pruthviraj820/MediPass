@@ -47,6 +47,9 @@ import DoctorPatientProfile from '../pages/doctor/DoctorPatientProfile'
 import DoctorAddDiagnosis from '../pages/doctor/DoctorAddDiagnosis'
 import DoctorProfile from '../pages/doctor/DoctorProfile'
 import DoctorEditProfile from '../pages/doctor/DoctorEditProfile'
+import DoctorPrivacySecurity from '../pages/doctor/DoctorPrivacySecurity'
+import DoctorNotifications from '../pages/doctor/DoctorNotifications'
+import DoctorHelpCenter from '../pages/doctor/DoctorHelpCenter'
 import DoctorPrescribeMedication from '../pages/doctor/DoctorPrescribeMedication'
 import PatientEmergencyProfile from '../pages/patient/PatientEmergencyProfile'
 
@@ -302,6 +305,21 @@ const AppNavigator = () => {
             <Stack.Screen
               name="DoctorEditProfile"
               component={DoctorEditProfile}
+              options={{ headerShown: false }}
+            />
+            <Stack.Screen
+              name="DoctorPrivacySecurity"
+              component={DoctorPrivacySecurity}
+              options={{ headerShown: false }}
+            />
+            <Stack.Screen
+              name="DoctorNotifications"
+              component={DoctorNotifications}
+              options={{ headerShown: false }}
+            />
+            <Stack.Screen
+              name="DoctorHelpCenter"
+              component={DoctorHelpCenter}
               options={{ headerShown: false }}
             />
           </>
