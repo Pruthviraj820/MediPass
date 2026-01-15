@@ -7,7 +7,7 @@ import { mockPatients } from '../../data/mockData'
 import Navbar from '../../components/common/Navbar'
 import { colors } from '../../constants/colors'
 import { auth, db } from '../../services/firebase'
-import { collection, doc, getDocs, query, serverTimestamp, setDoc, where } from 'firebase/firestore'
+import { collection, doc, getDoc, getDocs, query, serverTimestamp, setDoc, where } from 'firebase/firestore'
 
 const DoctorQRScanner = () => {
   const [permission, requestPermission] = useCameraPermissions()
@@ -74,69 +74,111 @@ const DoctorQRScanner = () => {
         console.log('Patient found:', patient)
         setScannedPatient(patient)
 
-        Alert.alert(
-          'Add Patient?',
-          `Name: ${patient.name || 'Unknown'}\nEmail: ${patient.email || patientEmail}\n\nDo you want to add/accept this patient?`,
-          [
-            {
-              text: 'Cancel',
-              style: 'cancel',
-              onPress: () => {
-                // keep scanned state, allow user to scan again manually
-              },
-            },
-            {
-              text: 'Accept',
-              style: 'default',
-              onPress: async () => {
-                try {
-                  const doctorUid = auth?.currentUser?.uid
-                  if (!doctorUid || !db) {
-                    Alert.alert('Error', 'Doctor not logged in')
-                    return
-                  }
-                  const patientUid = patient.id || patient.uid
-                  if (!patientUid) {
-                    Alert.alert('Error', 'Invalid patient record')
-                    return
-                  }
+        const patientUid = patient.id || patient.uid
+        const doctorUid = auth?.currentUser?.uid
 
-                  // Link patient under doctor
-                  await setDoc(
-                    doc(db, 'doctors', doctorUid, 'patients', patientUid),
-                    {
+        // Check if patient is already in doctor's list
+        let isExistingPatient = false
+        if (doctorUid && db && patientUid) {
+          try {
+            const patientDocRef = doc(db, 'doctors', doctorUid, 'patients', patientUid)
+            const existingDoc = await getDoc(patientDocRef)
+            isExistingPatient = existingDoc.exists()
+          } catch (error) {
+            console.log('Error checking existing patient:', error)
+          }
+        }
+
+        if (isExistingPatient) {
+          // Patient already exists, navigate directly to profile
+          navigation.navigate('DoctorPatientProfile', {
+            patientId: patientUid,
+            patientName: patient.name || '',
+            patientEmail: patient.email || patientEmail,
+          })
+          // Reset scanner after navigation
+          setTimeout(() => {
+            setScanned(false)
+            setIsScanning(true)
+            setScannedPatient(null)
+          }, 500)
+        } else {
+          // New patient, show accept dialog
+          Alert.alert(
+            'Add Patient?',
+            `Name: ${patient.name || 'Unknown'}\nEmail: ${patient.email || patientEmail}\n\nDo you want to add/accept this patient?`,
+            [
+              {
+                text: 'Cancel',
+                style: 'cancel',
+                onPress: () => {
+                  // Reset scanner
+                  setScanned(false)
+                  setIsScanning(true)
+                  setScannedPatient(null)
+                },
+              },
+              {
+                text: 'Accept',
+                style: 'default',
+                onPress: async () => {
+                  try {
+                    if (!doctorUid || !db) {
+                      Alert.alert('Error', 'Doctor not logged in')
+                      return
+                    }
+                    if (!patientUid) {
+                      Alert.alert('Error', 'Invalid patient record')
+                      return
+                    }
+
+                    // Link patient under doctor
+                    await setDoc(
+                      doc(db, 'doctors', doctorUid, 'patients', patientUid),
+                      {
+                        patientId: patientUid,
+                        email: patient.email || patientEmail,
+                        name: patient.name || '',
+                        addedAt: serverTimestamp(),
+                      },
+                      { merge: true },
+                    )
+
+                    // Link doctor under patient (optional, useful later)
+                    await setDoc(
+                      doc(db, 'users', patientUid, 'doctors', doctorUid),
+                      {
+                        doctorId: doctorUid,
+                        addedAt: serverTimestamp(),
+                      },
+                      { merge: true },
+                    )
+
+                    // Navigate to patient profile instead of prescription page
+                    navigation.navigate('DoctorPatientProfile', {
                       patientId: patientUid,
-                      email: patient.email || patientEmail,
-                      name: patient.name || '',
-                      addedAt: serverTimestamp(),
-                    },
-                    { merge: true },
-                  )
-
-                  // Link doctor under patient (optional, useful later)
-                  await setDoc(
-                    doc(db, 'users', patientUid, 'doctors', doctorUid),
-                    {
-                      doctorId: doctorUid,
-                      addedAt: serverTimestamp(),
-                    },
-                    { merge: true },
-                  )
-
-                  Alert.alert('Success', 'Patient added')
-                  navigation.navigate('DoctorPrescribeMedication', {
-                    patientId: patientUid,
-                    patientName: patient.name || '',
-                    patientEmail: patient.email || patientEmail,
-                  })
-                } catch (error) {
-                  console.error('Accept patient error:', error)
-                  Alert.alert('Error', error?.message || 'Failed to accept patient')
-                }
+                      patientName: patient.name || '',
+                      patientEmail: patient.email || patientEmail,
+                    })
+                    // Reset scanner after navigation
+                    setTimeout(() => {
+                      setScanned(false)
+                      setIsScanning(true)
+                      setScannedPatient(null)
+                    }, 500)
+                  } catch (error) {
+                    console.error('Accept patient error:', error)
+                    Alert.alert('Error', error?.message || 'Failed to accept patient')
+                    // Reset scanner on error
+                    setScanned(false)
+                    setIsScanning(true)
+                    setScannedPatient(null)
+                  }
+                },
               },
-            },
-          ],
-        )
+            ],
+          )
+        }
       } else {
         console.log('Patient not found for email:', patientEmail)
         // Patient not found - show error

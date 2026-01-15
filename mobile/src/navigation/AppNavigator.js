@@ -41,6 +41,7 @@ import PatientTermsConditions from '../pages/patient/PatientTermsConditions'
 // Doctor Screens
 import DoctorDashboard from '../pages/doctor/DoctorDashboard'
 import DoctorQRScanner from '../pages/doctor/DoctorQRScanner'
+import DoctorPatientsList from '../pages/doctor/DoctorPatientsList'
 import DoctorPatientProfile from '../pages/doctor/DoctorPatientProfile'
 import DoctorAddDiagnosis from '../pages/doctor/DoctorAddDiagnosis'
 import DoctorProfile from '../pages/doctor/DoctorProfile'
@@ -158,6 +159,7 @@ const DoctorTabNavigator = () => {
 
           if (route.name === 'DoctorDashboard') iconName = focused ? 'home' : 'home-outline'
           else if (route.name === 'DoctorQRScanner') iconName = focused ? 'scan' : 'scan-outline'
+          else if (route.name === 'DoctorPatientsList') iconName = focused ? 'people' : 'people-outline'
           else if (route.name === 'DoctorProfile') iconName = focused ? 'person' : 'person-outline'
 
           return <Ionicons name={iconName} size={size} color={color} />
@@ -175,6 +177,11 @@ const DoctorTabNavigator = () => {
         options={{ title: 'Scan' }}
       />
       <Tab.Screen
+        name="DoctorPatientsList"
+        component={DoctorPatientsList}
+        options={{ title: 'Patients' }}
+      />
+      <Tab.Screen
         name="DoctorProfile"
         component={DoctorProfile}
         options={{ title: 'Profile' }}
@@ -188,7 +195,7 @@ const AppNavigator = () => {
 
   useEffect(() => {
     initializeAuth()
-  }, [])
+  }, [initializeAuth])
 
   useEffect(() => {
     // Navigate to appropriate screen when auth state changes
