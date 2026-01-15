@@ -1,14 +1,68 @@
-import React from 'react'
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert } from 'react-native'
-import { CommonActions } from '@react-navigation/native'
+import React, { useState, useEffect } from 'react'
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert, ActivityIndicator } from 'react-native'
+import { CommonActions, useNavigation } from '@react-navigation/native'
 import { Ionicons } from '@expo/vector-icons'
+import { doc, getDoc, onSnapshot } from 'firebase/firestore'
+import { auth, db } from '../../services/firebase'
 import { useAuthStore } from '../../stores/authStore'
 import { navigationRef } from '../../navigation/AppNavigator'
 import Navbar from '../../components/common/Navbar'
 import { colors } from '../../constants/colors'
 
 const DoctorProfile = () => {
+  const navigation = useNavigation()
   const { user, logout } = useAuthStore()
+  const [doctorData, setDoctorData] = useState(null)
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    const doctorUid = auth?.currentUser?.uid || user?.uid || user?.id
+    if (!doctorUid || !db) {
+      setDoctorData(user)
+      setLoading(false)
+      return
+    }
+
+    // Set up real-time listener for doctor profile
+    const doctorDocRef = doc(db, 'users', doctorUid)
+    
+    const unsubscribe = onSnapshot(
+      doctorDocRef,
+      (docSnapshot) => {
+        if (docSnapshot.exists()) {
+          const data = docSnapshot.data()
+          setDoctorData({
+            ...user,
+            ...data,
+          })
+        } else {
+          setDoctorData(user)
+        }
+        setLoading(false)
+      },
+      (error) => {
+        console.error('Error loading doctor profile:', error)
+        setDoctorData(user)
+        setLoading(false)
+      }
+    )
+
+    return () => unsubscribe()
+  }, [user])
+
+  if (loading) {
+    return (
+      <View style={styles.container}>
+        <Navbar />
+        <View style={styles.centerContent}>
+          <ActivityIndicator size="large" color={colors.primary[600]} />
+          <Text style={styles.loadingText}>Loading profile...</Text>
+        </View>
+      </View>
+    )
+  }
+
+  const displayUser = doctorData || user
 
   const handleLogout = () => {
     Alert.alert(
@@ -46,10 +100,16 @@ const DoctorProfile = () => {
         {/* Profile Header */}
         <View style={styles.profileHeader}>
           <View style={styles.avatar}>
-            <Text style={styles.avatarText}>{user?.name?.[0]?.toUpperCase() || 'U'}</Text>
+            <Text style={styles.avatarText}>{displayUser?.name?.[0]?.toUpperCase() || 'U'}</Text>
           </View>
-          <Text style={styles.name}>{user?.name || 'User'}</Text>
-          <Text style={styles.email}>{user?.email || 'user@email.com'}</Text>
+          <Text style={styles.name}>{displayUser?.name || 'User'}</Text>
+          <Text style={styles.email}>{displayUser?.email || 'user@email.com'}</Text>
+          {displayUser?.specialization && (
+            <Text style={styles.specialization}>{displayUser.specialization}</Text>
+          )}
+          {displayUser?.hospital && (
+            <Text style={styles.hospital}>{displayUser.hospital}</Text>
+          )}
           <View style={styles.roleBadge}>
             <Ionicons name="medical" size={16} color={colors.success[600]} />
             <Text style={styles.roleText}>Doctor</Text>
@@ -60,7 +120,10 @@ const DoctorProfile = () => {
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Account</Text>
           
-          <TouchableOpacity style={styles.optionItem}>
+          <TouchableOpacity
+            style={styles.optionItem}
+            onPress={() => navigation.navigate('DoctorEditProfile')}
+          >
             <View style={styles.optionLeft}>
               <View style={[styles.optionIcon, { backgroundColor: colors.primary[100] }]}>
                 <Ionicons name="person-circle" size={24} color={colors.primary[600]} />
@@ -190,6 +253,27 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '600',
     color: colors.success[600],
+  },
+  specialization: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: colors.primary[600],
+    marginTop: 4,
+  },
+  hospital: {
+    fontSize: 14,
+    color: colors.neutral[600],
+    marginTop: 2,
+  },
+  centerContent: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 16,
+  },
+  loadingText: {
+    fontSize: 16,
+    color: colors.neutral[600],
   },
   section: {
     marginBottom: 32,

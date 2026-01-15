@@ -1,8 +1,10 @@
-import React from 'react'
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-native'
+import React, { useState, useEffect } from 'react'
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator } from 'react-native'
 import { useNavigation } from '@react-navigation/native'
 import { Ionicons } from '@expo/vector-icons'
-import { mockPatients, mockPrescriptions } from '../../data/mockData'
+import { collection, query, onSnapshot, orderBy } from 'firebase/firestore'
+import { auth, db } from '../../services/firebase'
+import { useAuthStore } from '../../stores/authStore'
 import PatientQR from '../../components/patient/PatientQR'
 import MedicalTimeline from '../../components/common/MedicalTimeline'
 import Navbar from '../../components/common/Navbar'
@@ -24,7 +26,81 @@ try {
 
 const PatientDashboard = () => {
   const navigation = useNavigation()
-  const patient = mockPatients[0]
+  const { user } = useAuthStore()
+  const [prescriptions, setPrescriptions] = useState([])
+  const [patientData, setPatientData] = useState(null)
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    const patientUid = auth?.currentUser?.uid || user?.uid || user?.id
+    if (!patientUid || !db) {
+      setLoading(false)
+      return
+    }
+
+    // Load patient data
+    const loadPatientData = async () => {
+      try {
+        const { doc, getDoc } = require('firebase/firestore')
+        const patientDocRef = doc(db, 'users', patientUid)
+        const patientDoc = await getDoc(patientDocRef)
+        
+        if (patientDoc.exists()) {
+          const data = patientDoc.data()
+          setPatientData({
+            allergies: Array.isArray(data.allergies) ? data.allergies : [],
+            bloodGroup: data.bloodGroup || 'Unknown',
+          })
+        }
+      } catch (error) {
+        console.error('Error loading patient data:', error)
+      }
+    }
+
+    loadPatientData()
+
+    // Set up real-time listener for prescriptions
+    const prescriptionsRef = collection(db, 'users', patientUid, 'prescriptions')
+    const q = query(prescriptionsRef, orderBy('createdAt', 'desc'))
+
+    const unsubscribePrescriptions = onSnapshot(
+      q,
+      (querySnapshot) => {
+        const prescriptionsList = []
+        querySnapshot.forEach((doc) => {
+          prescriptionsList.push({
+            id: doc.id,
+            ...doc.data(),
+          })
+        })
+        setPrescriptions(prescriptionsList)
+        setLoading(false)
+      },
+      (error) => {
+        console.error('Error loading prescriptions:', error)
+        setLoading(false)
+      }
+    )
+
+    return () => {
+      unsubscribePrescriptions()
+    }
+  }, [user])
+
+  if (loading) {
+    return (
+      <View style={styles.container}>
+        <Navbar />
+        <View style={styles.centerContent}>
+          <ActivityIndicator size="large" color={colors.primary[600]} />
+          <Text style={styles.loadingText}>Loading dashboard...</Text>
+        </View>
+      </View>
+    )
+  }
+
+  const patientName = user?.name || 'Patient'
+  const allergiesCount = patientData?.allergies?.length || 0
 
   return (
     <View style={styles.container}>
@@ -38,7 +114,7 @@ const PatientDashboard = () => {
             <Ionicons name="heart" size={20} color={colors.white} />
             <Text style={styles.badgeText}>Your Health Records, Always Accessible</Text>
           </LinearGradient>
-          <Text style={styles.title}>Welcome Back, {patient.name}</Text>
+          <Text style={styles.title}>Welcome Back, {patientName}</Text>
         </View>
 
         <View style={styles.grid}>
@@ -52,7 +128,7 @@ const PatientDashboard = () => {
               <View style={[styles.statIcon, { backgroundColor: colors.success[100] }]}>
                 <Ionicons name="medical" size={40} color={colors.success[600]} />
               </View>
-              <Text style={styles.statNumber}>{mockPrescriptions.length}</Text>
+              <Text style={styles.statNumber}>{prescriptions.length}</Text>
               <Text style={styles.statLabel}>Active Prescriptions</Text>
             </TouchableOpacity>
 
@@ -63,7 +139,7 @@ const PatientDashboard = () => {
               <View style={[styles.statIcon, { backgroundColor: colors.neutral[200] }]}>
                 <Ionicons name="warning" size={40} color={colors.neutral[700]} />
               </View>
-              <Text style={styles.statNumber}>{patient.allergies.length}</Text>
+              <Text style={styles.statNumber}>{allergiesCount}</Text>
               <Text style={styles.statLabel}>Known Allergies</Text>
             </TouchableOpacity>
           </View>
@@ -83,6 +159,16 @@ const styles = StyleSheet.create({
   content: {
     flex: 1,
     padding: 24,
+  },
+  centerContent: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 16,
+  },
+  loadingText: {
+    fontSize: 16,
+    color: colors.neutral[600],
   },
   hero: {
     alignItems: 'center',
@@ -150,4 +236,3 @@ const styles = StyleSheet.create({
 })
 
 export default PatientDashboard
-

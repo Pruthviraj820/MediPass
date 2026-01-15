@@ -101,6 +101,23 @@ const PatientProfile = () => {
           </TouchableOpacity>
         </View>
 
+        {/* My Doctors Section */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>My Doctors</Text>
+          <TouchableOpacity
+            style={styles.optionItem}
+            onPress={() => navigation.navigate('PatientDoctorsList')}
+          >
+            <View style={styles.optionLeft}>
+              <View style={[styles.optionIcon, { backgroundColor: colors.primary[100] }]}>
+                <Ionicons name="people" size={24} color={colors.primary[600]} />
+              </View>
+              <Text style={styles.optionText}>View All Doctors</Text>
+            </View>
+            <Ionicons name="chevron-forward" size={20} color={colors.neutral[400]} />
+          </TouchableOpacity>
+        </View>
+
         {/* Support Section */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Support</Text>

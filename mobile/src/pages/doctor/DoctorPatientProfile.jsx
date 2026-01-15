@@ -10,10 +10,11 @@ import {
 } from 'react-native'
 import { useRoute, useNavigation } from '@react-navigation/native'
 import { Ionicons } from '@expo/vector-icons'
-import { doc, getDoc, collection, query, getDocs, orderBy } from 'firebase/firestore'
+import { doc, getDoc, collection, query, onSnapshot, orderBy } from 'firebase/firestore'
 import { format } from 'date-fns'
 import { db } from '../../services/firebase'
 import Navbar from '../../components/common/Navbar'
+import MedicalTimeline from '../../components/common/MedicalTimeline'
 import { colors } from '../../constants/colors'
 
 const DoctorPatientProfile = () => {
@@ -25,72 +26,85 @@ const DoctorPatientProfile = () => {
   const [prescriptions, setPrescriptions] = useState([])
   const [loading, setLoading] = useState(true)
 
+
   useEffect(() => {
-    if (patientId) {
-      loadPatientData()
-    } else {
+    if (!db || !patientId) {
       setLoading(false)
+      return
+    }
+
+    let unsubscribePrescriptions = null
+
+    const loadPatientData = async () => {
+      try {
+        // Load patient profile from Firestore
+        const patientDocRef = doc(db, 'users', patientId)
+        const patientDoc = await getDoc(patientDocRef)
+
+        if (patientDoc.exists()) {
+          const patientData = patientDoc.data()
+          setPatient({
+            id: patientId,
+            name: patientData.name || routePatientName || 'Unknown Patient',
+            email: patientData.email || routePatientEmail || '',
+            phone: patientData.phone || '',
+            bloodGroup: patientData.bloodGroup || 'Unknown',
+            allergies: Array.isArray(patientData.allergies) ? patientData.allergies : [],
+            medicalConditions: Array.isArray(patientData.medicalConditions) ? patientData.medicalConditions : [],
+            emergencyContacts: Array.isArray(patientData.emergencyContacts) ? patientData.emergencyContacts : [],
+          })
+        } else {
+          // Fallback to route params if doc doesn't exist
+          setPatient({
+            id: patientId,
+            name: routePatientName || 'Unknown Patient',
+            email: routePatientEmail || '',
+            phone: '',
+            bloodGroup: 'Unknown',
+            allergies: [],
+            medicalConditions: [],
+            emergencyContacts: [],
+          })
+        }
+
+        // Set up real-time listener for prescriptions
+        const prescriptionsRef = collection(db, 'users', patientId, 'prescriptions')
+        const q = query(prescriptionsRef, orderBy('createdAt', 'desc'))
+        
+        unsubscribePrescriptions = onSnapshot(
+          q,
+          (querySnapshot) => {
+            const prescriptionsList = []
+            querySnapshot.forEach((doc) => {
+              const data = doc.data()
+              prescriptionsList.push({
+                id: doc.id,
+                ...data,
+              })
+            })
+            setPrescriptions(prescriptionsList)
+          },
+          (error) => {
+            console.error('Error loading prescriptions:', error)
+          }
+        )
+      } catch (error) {
+        console.error('Error loading patient data:', error)
+        Alert.alert('Error', 'Failed to load patient data')
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    loadPatientData()
+
+    // Cleanup function
+    return () => {
+      if (unsubscribePrescriptions) {
+        unsubscribePrescriptions()
+      }
     }
   }, [patientId])
-
-  const loadPatientData = async () => {
-    try {
-      if (!db || !patientId) {
-        setLoading(false)
-        return
-      }
-
-      // Load patient profile from Firestore
-      const patientDocRef = doc(db, 'users', patientId)
-      const patientDoc = await getDoc(patientDocRef)
-
-      if (patientDoc.exists()) {
-        const patientData = patientDoc.data()
-        setPatient({
-          id: patientId,
-          name: patientData.name || routePatientName || 'Unknown Patient',
-          email: patientData.email || routePatientEmail || '',
-          phone: patientData.phone || '',
-          bloodGroup: patientData.bloodGroup || 'Unknown',
-          allergies: Array.isArray(patientData.allergies) ? patientData.allergies : [],
-          medicalConditions: Array.isArray(patientData.medicalConditions) ? patientData.medicalConditions : [],
-          emergencyContacts: Array.isArray(patientData.emergencyContacts) ? patientData.emergencyContacts : [],
-        })
-      } else {
-        // Fallback to route params if doc doesn't exist
-        setPatient({
-          id: patientId,
-          name: routePatientName || 'Unknown Patient',
-          email: routePatientEmail || '',
-          phone: '',
-          bloodGroup: 'Unknown',
-          allergies: [],
-          medicalConditions: [],
-          emergencyContacts: [],
-        })
-      }
-
-      // Load prescriptions
-      const prescriptionsRef = collection(db, 'users', patientId, 'prescriptions')
-      const q = query(prescriptionsRef, orderBy('createdAt', 'desc'))
-      const prescriptionsSnapshot = await getDocs(q)
-
-      const prescriptionsList = []
-      prescriptionsSnapshot.forEach((doc) => {
-        const data = doc.data()
-        prescriptionsList.push({
-          id: doc.id,
-          ...data,
-        })
-      })
-      setPrescriptions(prescriptionsList)
-    } catch (error) {
-      console.error('Error loading patient data:', error)
-      Alert.alert('Error', 'Failed to load patient data')
-    } finally {
-      setLoading(false)
-    }
-  }
 
   const handleDownloadRecords = () => {
     // TODO: Implement PDF generation and download
@@ -230,6 +244,15 @@ const DoctorPatientProfile = () => {
             ))}
           </View>
         )}
+
+        {/* Medical History */}
+        <View style={styles.prescriptionsSection}>
+          <View style={styles.sectionHeader}>
+            <Ionicons name="pulse" size={28} color={colors.primary[600]} />
+            <Text style={styles.sectionTitle}>Medical History</Text>
+          </View>
+          <MedicalTimeline patientId={patientId} />
+        </View>
 
         {/* Prescriptions */}
         <View style={styles.prescriptionsSection}>

@@ -37,6 +37,7 @@ import PatientPrivacySecurity from '../pages/patient/PatientPrivacySecurity'
 import PatientNotifications from '../pages/patient/PatientNotifications'
 import PatientHelpCenter from '../pages/patient/PatientHelpCenter'
 import PatientTermsConditions from '../pages/patient/PatientTermsConditions'
+import PatientDoctorsList from '../pages/patient/PatientDoctorsList'
 
 // Doctor Screens
 import DoctorDashboard from '../pages/doctor/DoctorDashboard'
@@ -45,6 +46,7 @@ import DoctorPatientsList from '../pages/doctor/DoctorPatientsList'
 import DoctorPatientProfile from '../pages/doctor/DoctorPatientProfile'
 import DoctorAddDiagnosis from '../pages/doctor/DoctorAddDiagnosis'
 import DoctorProfile from '../pages/doctor/DoctorProfile'
+import DoctorEditProfile from '../pages/doctor/DoctorEditProfile'
 import DoctorPrescribeMedication from '../pages/doctor/DoctorPrescribeMedication'
 import PatientEmergencyProfile from '../pages/patient/PatientEmergencyProfile'
 
@@ -273,6 +275,11 @@ const AppNavigator = () => {
               component={PatientTermsConditions}
               options={{ headerShown: false }}
             />
+            <Stack.Screen
+              name="PatientDoctorsList"
+              component={PatientDoctorsList}
+              options={{ headerShown: false }}
+            />
           </>
         ) : isDoctor ? (
           <>
@@ -290,6 +297,11 @@ const AppNavigator = () => {
             <Stack.Screen
               name="DoctorPrescribeMedication"
               component={DoctorPrescribeMedication}
+              options={{ headerShown: false }}
+            />
+            <Stack.Screen
+              name="DoctorEditProfile"
+              component={DoctorEditProfile}
               options={{ headerShown: false }}
             />
           </>

@@ -10,7 +10,7 @@ import {
 } from 'react-native'
 import { useNavigation } from '@react-navigation/native'
 import { Ionicons } from '@expo/vector-icons'
-import { collection, query, getDocs, orderBy } from 'firebase/firestore'
+import { collection, query, onSnapshot, orderBy } from 'firebase/firestore'
 import { auth, db } from '../../services/firebase'
 import Navbar from '../../components/common/Navbar'
 import { colors } from '../../constants/colors'
@@ -21,37 +21,39 @@ const DoctorPatientsList = () => {
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    loadPatients()
-  }, [])
-
-  const loadPatients = async () => {
-    try {
-      const doctorUid = auth?.currentUser?.uid
-      if (!doctorUid || !db) {
-        setLoading(false)
-        return
-      }
-
-      const patientsRef = collection(db, 'doctors', doctorUid, 'patients')
-      const q = query(patientsRef, orderBy('addedAt', 'desc'))
-      const querySnapshot = await getDocs(q)
-
-      const patientsList = []
-      querySnapshot.forEach((doc) => {
-        patientsList.push({
-          id: doc.id,
-          ...doc.data(),
-        })
-      })
-
-      setPatients(patientsList)
-    } catch (error) {
-      console.error('Error loading patients:', error)
-      Alert.alert('Error', 'Failed to load patients list')
-    } finally {
+    const doctorUid = auth?.currentUser?.uid
+    if (!doctorUid || !db) {
       setLoading(false)
+      return
     }
-  }
+
+    // Set up real-time listener
+    const patientsRef = collection(db, 'doctors', doctorUid, 'patients')
+    const q = query(patientsRef, orderBy('addedAt', 'desc'))
+    
+    const unsubscribe = onSnapshot(
+      q,
+      (querySnapshot) => {
+        const patientsList = []
+        querySnapshot.forEach((doc) => {
+          patientsList.push({
+            id: doc.id,
+            ...doc.data(),
+          })
+        })
+        setPatients(patientsList)
+        setLoading(false)
+      },
+      (error) => {
+        console.error('Error loading patients:', error)
+        Alert.alert('Error', 'Failed to load patients list')
+        setLoading(false)
+      }
+    )
+
+    // Cleanup listener on unmount
+    return () => unsubscribe()
+  }, [])
 
   const handlePatientPress = (patient) => {
     navigation.navigate('DoctorPatientProfile', {
