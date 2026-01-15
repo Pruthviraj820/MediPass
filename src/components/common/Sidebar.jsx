@@ -32,8 +32,7 @@ const Sidebar = ({ role = 'patient' }) => {
   const doctorLinks = [
     { path: '/doctor', icon: LayoutDashboard, label: 'Dashboard' },
     { path: '/doctor/scanner', icon: Camera, label: 'Scan QR' },
-    { path: '/doctor/patient/patient-001', icon: User, label: 'Patients' },
-    { path: '/doctor/add-diagnosis/patient-001', icon: Stethoscope, label: 'Add Diagnosis' }
+    { path: '/doctor/patients', icon: Users, label: 'My Patients' },
   ]
 
   const links = role === 'doctor' ? doctorLinks : patientLinks
@@ -69,12 +68,12 @@ const Sidebar = ({ role = 'patient' }) => {
           const Icon = link.icon
           // Check if current path matches exactly, or starts with link path for dynamic routes
           let isActive = location.pathname === link.path
-          if (!isActive && link.path.includes('/patient/') && !link.path.includes('/add-diagnosis')) {
-            // Match any /doctor/patient/:id route
-            isActive = location.pathname.startsWith('/doctor/patient/') && !location.pathname.includes('/add-diagnosis')
-          } else if (!isActive && link.path.includes('/add-diagnosis/')) {
-            // Match any /doctor/add-diagnosis/:id route
-            isActive = location.pathname.startsWith('/doctor/add-diagnosis/')
+          if (!isActive && link.path === '/doctor/patients') {
+            // Match /doctor/patients or any /doctor/patient/:id route
+            isActive = location.pathname === '/doctor/patients' || 
+                      (location.pathname.startsWith('/doctor/patient/') && 
+                       !location.pathname.includes('/add-diagnosis') &&
+                       !location.pathname.includes('/prescribe'))
           }
           
           return (

@@ -18,6 +18,7 @@ import PatientQRCode from "./pages/patient/PatientQRCode"
 import PatientMedicalTimeline from "./pages/patient/PatientMedicalTimeline"
 import PatientPrescriptions from "./pages/patient/PatientPrescriptions"
 import PatientEmergencyProfile from "./pages/patient/PatientEmergencyProfile"
+import EditEmergencyProfile from "./pages/patient/EditEmergencyProfile"
 import PatientChatbot from "./pages/patient/PatientChatbot"
 
 // Doctor Pages
@@ -25,6 +26,8 @@ import DoctorDashboard from "./pages/doctor/DoctorDashboard"
 import DoctorQRScanner from "./pages/doctor/DoctorQRScanner"
 import DoctorPatientProfile from "./pages/doctor/DoctorPatientProfile"
 import DoctorAddDiagnosis from "./pages/doctor/DoctorAddDiagnosis"
+import DoctorPrescribeMedication from "./pages/doctor/DoctorPrescribeMedication"
+import DoctorPatientsList from "./pages/doctor/DoctorPatientsList"
 
 import ProtectedRoute from "./components/ProtectedRoute"
 
@@ -61,6 +64,7 @@ function App() {
         <Route path="prescriptions" element={<PatientPrescriptions />} />
         <Route path="chatbot" element={<PatientChatbot/>}/>
         <Route path="emergency-profile" element={<PatientEmergencyProfile />} />
+        <Route path="edit-emergency-profile" element={<EditEmergencyProfile />} />
       </Route>
 
       {/* Doctor */}
@@ -74,8 +78,10 @@ function App() {
       >
         <Route index element={<DoctorDashboard />} />
         <Route path="scanner" element={<DoctorQRScanner />} />
+        <Route path="patients" element={<DoctorPatientsList />} />
         <Route path="patient/:id" element={<DoctorPatientProfile />} />
         <Route path="add-diagnosis/:patientId" element={<DoctorAddDiagnosis />} />
+        <Route path="prescribe/:patientId" element={<DoctorPrescribeMedication />} />
       </Route>
 
       <Route path="*" element={<Navigate to="/" />} />

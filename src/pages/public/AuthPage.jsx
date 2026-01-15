@@ -1,23 +1,8 @@
-import { useState } from "react"
-import {
-  getAuth,
-  createUserWithEmailAndPassword,
-  signInWithEmailAndPassword,
-  signInWithPopup,
-  GoogleAuthProvider,
-  updateProfile
-} from "firebase/auth"
+import { useState, useEffect } from "react"
 import { useNavigate, useSearchParams } from "react-router-dom"
-import { Shield, Mail, Lock, UserPlus, ArrowRight } from "lucide-react"
-import { app } from "../../firebase"
+import { Shield, UserPlus, ArrowRight } from "lucide-react"
+import { useAuthStore } from "../../stores/authStore"
 import "./AuthPage.css"
-
-
-
-const auth = getAuth(app)
-const provider = new GoogleAuthProvider()
-
-import { useEffect } from "react"
 
 
 
@@ -57,54 +42,36 @@ const AuthPage = () => {
     setFormData({ ...formData, [e.target.name]: e.target.value })
   }
 
+  const { login, signup, isLoading } = useAuthStore()
+
   async function handleAuth(e) {
     e.preventDefault()
     setError("")
     setLoading(true)
 
     try {
-      let userCred
+      let result
 
       if (isSignup) {
-        userCred = await createUserWithEmailAndPassword(
-          auth,
-          formData.email,
-          formData.password
-        )
-
-        await updateProfile(userCred.user, {
-          displayName: formData.name
+        result = await signup({
+          name: formData.name,
+          email: formData.email,
+          password: formData.password,
+          role: formData.role,
+          phone: ''
         })
       } else {
-        userCred = await signInWithEmailAndPassword(
-          auth,
-          formData.email,
-          formData.password
-        )
+        result = await login(formData.email, formData.password, formData.role)
       }
 
-      const redirectTo =
-        searchParams.get("redirect") || formData.role || "patient"
-
-      navigate(`/${redirectTo}`)
-
+      if (result.success) {
+        const redirectTo = formData.role || "patient"
+        navigate(`/${redirectTo}`)
+      } else {
+        setError(result.error || 'Authentication failed')
+      }
     } catch (err) {
-      setError(err.message)
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  async function handleGoogle() {
-    setError("")
-    setLoading(true)
-
-    try {
-      await signInWithPopup(auth, provider)
-      const redirectTo = searchParams.get("role") || "dashboard"
-      navigate(`/${redirectTo}`)
-    } catch (err) {
-      setError(err.message)
+      setError(err.message || 'An error occurred')
     } finally {
       setLoading(false)
     }
@@ -180,20 +147,11 @@ const AuthPage = () => {
 
           {error && <div className="error-box">{error}</div>}
 
-          <button className="main-btn" disabled={loading}>
-            {loading
+          <button className="main-btn" disabled={loading || isLoading}>
+            {(loading || isLoading)
               ? "Please wait..."
               : isSignup ? "Create Account" : "Sign In"}
-            {!loading && <ArrowRight size={18} />}
-          </button>
-
-          <button
-            type="button"
-            onClick={handleGoogle}
-            disabled={loading}
-            className="google-btn"
-          >
-            Continue with Google
+            {!(loading || isLoading) && <ArrowRight size={18} />}
           </button>
 
         </form>
