@@ -10,8 +10,9 @@ import {
   Stethoscope,
   Camera,
   User,
-  LogOut 
+  LogOut  
 } from 'lucide-react'
+import { MessageCircleMore } from 'lucide-react'
 import { useAuthStore } from '../../stores/authStore'
 
 const Sidebar = ({ role = 'patient' }) => {
@@ -23,6 +24,7 @@ const Sidebar = ({ role = 'patient' }) => {
     { path: '/patient', icon: LayoutDashboard, label: 'Dashboard' },
     { path: '/patient/qr-code', icon: Barcode, label: 'QR Code' },
     { path: '/patient/medical-timeline', icon: FileText, label: 'Medical History' },
+    { path: '/patient/chatbot' , icon:MessageCircleMore , label:'Chatbot'},
     { path: '/patient/prescriptions', icon: Clock, label: 'Prescriptions' },
     { path: '/patient/emergency-profile', icon: Shield, label: 'Emergency Profile' }
   ]
@@ -97,27 +99,7 @@ const Sidebar = ({ role = 'patient' }) => {
       </nav>
 
       {/* User Info & Logout */}
-      <div className="absolute bottom-0 left-0 right-0 p-6 border-t border-neutral-100">
-        <div className="flex items-center space-x-3 mb-4 p-4 bg-gray-50 rounded-2xl">
-          <div className={`w-12 h-12 bg-gradient-to-r from-primary-500 to-primary-600 rounded-xl flex items-center justify-center text-white font-semibold shrink-0 ${isCollapsed ? 'mx-auto' : ''}`}>
-            {user?.name?.[0]?.toUpperCase()}
-          </div>
-          {!isCollapsed && (
-            <div className="min-w-0 flex-1">
-              <p className="font-semibold text-neutral-900 truncate">{user?.name || 'User'}</p>
-              <p className="text-sm text-neutral-500 truncate">{user?.role || role}</p>
-            </div>
-          )}
-        </div>
-        
-        <button
-          onClick={logout}
-          className="w-full flex items-center space-x-3 p-4 text-neutral-600 hover:bg-gray--100 rounded-2xl transition-all group"
-        >
-          <LogOut className="w-6 h-6 group-hover:text-red-600 transition-colors" />
-          {!isCollapsed && <span className="font-medium">Logout</span>}
-        </button>
-      </div>
+      
     </div>
   )
 }

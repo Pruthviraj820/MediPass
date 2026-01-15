@@ -1,170 +1,124 @@
-import { useState, useEffect, useRef } from "react";
-import dayjs from "dayjs";
-import { GoogleGenAI } from "@google/genai";
+import React, { useState, useRef, useEffect } from 'react'
+import dayjs from 'dayjs'
+import { IoSend } from 'react-icons/io5'
+import { GoogleGenAI } from '@google/genai'
 
-import robotPfp from "./assets/images/robot.png";
-import userPfp from "./assets/images/me.jpg";
-import loadingGif from "./assets/images/loading-spinner.gif";
+import Navbar from '../../components/common/Navbar'
+import { colors } from '../../constants/colors'
 
-import "./PatientChatbot.css";
-/* ---------------- GEMINI SETUP ---------------- */
+import loadingGif from '../../assets/loading-spinner.gif'
+import robotImg from '../../assets/robot.png'
+import userImg from '../../assets/user.png'
 
-const GEMINI_API_KEY = import.meta.env.VITE_GEMINI_API_KEY;
+import './PatientChatbot.css'
 
-const ai = new GoogleGenAI({
-  apiKey: GEMINI_API_KEY,
-});
+const GEMINI_API_KEY = 'AIzaSyCzDjeUFYoauNnyBFxAGq1w8JKpr7vzyx8'
 
-async function run(input) {
+const ai = new GoogleGenAI({ apiKey: GEMINI_API_KEY })
+
+async function run(prompt) {
   const response = await ai.models.generateContent({
-    model: "gemini-3-flash-preview",
-    contents: input,
-  });
-  return response.text;
+    model: 'gemini-3-flash-preview',
+    contents: prompt,
+  })
+  return response.text
 }
 
-/* ---------------- CHATBOT COMPONENT ---------------- */
+const PatientChatbot = () => {
+  const [messages, setMessages] = useState([])
+  const [input, setInput] = useState('')
+  const [loading, setLoading] = useState(false)
 
-export default function PatientChatbot() {
-  const [chatMessages, setChatMessages] = useState(
-    JSON.parse(localStorage.getItem("messages")) || []
-  );
-  const [inputText, setInputText] = useState("");
-  const [isLoading, setIsLoading] = useState(false);
+  const scrollRef = useRef(null)
 
-  const chatMessagesRef = useRef(null);
-
-  /* -------- Persist messages -------- */
   useEffect(() => {
-    localStorage.setItem("messages", JSON.stringify(chatMessages));
-  }, [chatMessages]);
+    scrollRef.current?.scrollTo({
+      top: scrollRef.current.scrollHeight,
+      behavior: 'smooth',
+    })
+  }, [messages])
 
-  /* -------- Auto scroll -------- */
-  useEffect(() => {
-    const container = chatMessagesRef.current;
-    if (container) {
-      container.scrollTop = container.scrollHeight;
+  const sendMessage = async () => {
+    if (!input.trim() || loading) return
+
+    const userMsg = {
+      sender: 'user',
+      text: input,
+      time: dayjs().format('h:mma'),
     }
-  }, [chatMessages.length]);
 
-  /* -------- Handlers -------- */
+    setMessages(prev => [...prev, userMsg])
+    setInput('')
+    setLoading(true)
 
-  function saveMessage(e) {
-    setInputText(e.target.value);
+    try {
+      const reply = await run(input)
+      setMessages(prev => [
+        ...prev,
+        { sender: 'bot', text: reply, time: dayjs().format('h:mma') },
+      ])
+    } catch {
+      setMessages(prev => [
+        ...prev,
+        { sender: 'bot', text: 'Unable to respond right now.', time: dayjs().format('h:mma') },
+      ])
+    }
+
+    setLoading(false)
   }
-
-  function keyPress(e) {
-    if (e.key === "Enter") sendMessage();
-    if (e.key === "Escape") setInputText("");
-  }
-
-  async function sendMessage() {
-    if (inputText.trim() === "" || isLoading) return;
-
-    const userMessage = {
-      message: inputText,
-      sender: "user",
-      time: dayjs().format("h:mma"),
-    };
-
-    setChatMessages((prev) => [...prev, userMessage]);
-    setInputText("");
-
-    setChatMessages((prev) => [
-      ...prev,
-      { message: "", sender: "robot", loading: true, time: "" },
-    ]);
-
-    setIsLoading(true);
-
-    const response = await run(inputText);
-
-    setChatMessages((prev) => {
-      const newChatMessages = prev.filter((msg) => !msg.loading);
-      return [
-        ...newChatMessages,
-        {
-          message: response,
-          sender: "robot",
-          time: dayjs().format("h:mma"),
-        },
-      ];
-    });
-
-    setIsLoading(false);
-  }
-
-  /* ---------------- UI ---------------- */
 
   return (
-    <div className="app-container">
-      {/* Messages */}
-      <div className="chat-messages-container" ref={chatMessagesRef}>
-        {chatMessages.map(({ message, sender, time }, index) => (
-          <div
-            key={index}
-            className={
-              sender === "user" ? "chat-message-user" : "chat-message-robot"
-            }
-          >
-            {sender === "robot" && (
-              <img src={robotPfp} className="chat-message-profile" />
+    <div className="chat-wrapper">
+      {/* Chat container */}
+      <div className="chat-main">
+        {/* Scrollable messages */}
+        <div className="chat-messages" ref={scrollRef}>
+          <div className="chat-header">
+            <div style={{ textAlign: 'center', width: '100%' }}>
+              <h1>AI Health Assistant</h1>
+              <p>Ask medical related questions</p>
+            </div>
+          </div>
+
+          <div className="chat-card">
+            {messages.length === 0 && (
+              <p className="welcome">👋 Hi! I’m your AI health assistant.</p>
             )}
 
-            <div className="chat-message-text time-user">
-              {sender === "robot" && message === "" ? (
-                <img src={loadingGif} className="loading-spinner" />
-              ) : (
-                message
-              )}
+            {messages.map((msg, i) => (
+              <div key={i} className={`message-row ${msg.sender}`}>
+                {msg.sender === 'bot' && <img src={robotImg} className="avatar" />}
+                <div className={`bubble ${msg.sender}`}>
+                  <p>{msg.text}</p>
+                  <span>{msg.time}</span>
+                </div>
+                {msg.sender === 'user' && <img src={userImg} className="avatar" />}
+              </div>
+            ))}
 
-              <p
-                className={
-                  "time " + (sender === "user" ? "time-user" : "time-robot")
-                }
-              >
-                {time}
-              </p>
-            </div>
-
-            {sender === "user" && (
-              <img src={userPfp} className="chat-message-profile" />
+            {loading && (
+              <div className="loading">
+                <img src={loadingGif} alt="loading" />
+              </div>
             )}
           </div>
-        ))}
-      </div>
+        </div>
 
-      {/* Welcome */}
-      <div className="welcome-center">
-        <p>{chatMessages.length === 0 ? "Welcome to my Chatbot" : ""}</p>
-      </div>
-
-      {/* Input */}
-      <div className="chat-input-container">
-        <input
-          placeholder="Send a message to Chatbot"
-          size="30"
-          value={inputText}
-          onChange={saveMessage}
-          onKeyDown={keyPress}
-          className="text-box"
-        />
-
-        <button
-          onClick={sendMessage}
-          disabled={isLoading || inputText.trim() === ""}
-          className="button send-button"
-        >
-          {isLoading ? "Sending..." : "Send"}
-        </button>
-
-        <button
-          onClick={() => setChatMessages([])}
-          className="button clear-button"
-        >
-          Reset
-        </button>
+        {/* Fixed input bar */}
+        <div className="input-bar">
+          <input
+            placeholder="Ask something..."
+            value={input}
+            onChange={e => setInput(e.target.value)}
+            onKeyDown={e => e.key === 'Enter' && sendMessage()}
+          />
+          <button onClick={sendMessage}>
+            <IoSend size={20} />
+          </button>
+        </div>
       </div>
     </div>
-  );
+  )
 }
+
+export default PatientChatbot

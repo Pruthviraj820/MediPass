@@ -1,10 +1,13 @@
 import { Link,/* useSearchParams */} from 'react-router-dom'
 import { User, UserCog, ArrowRight, Shield } from 'lucide-react'
+import Navbar from './Navbar'
 
 const RoleSelection = () => {
   // const [searchParams] = useSearchParams()
 
   return (
+    <>
+    <Navbar/>
     <div className="min-h-screen flex items-center justify-center py-12 px-4 bg-gradient-to-br from-primary-50 to-success-50">
       <div className="max-w-2xl w-full grid md:grid-cols-2 gap-8">
         {/* Patient Card */}
@@ -38,17 +41,10 @@ const RoleSelection = () => {
         </Link>
 
         {/* Security Badge */}
-        <div className="md:col-span-2 pt-12">
-          <div className="card p-8 text-center">
-            <Shield className="w-16 h-16 text-success-500 mx-auto mb-6" />
-            <h3 className="text-2xl font-bold text-neutral-900 mb-4">Healthcare Grade Security</h3>
-            <p className="text-lg text-neutral-600 max-w-2xl mx-auto">
-              End-to-end encryption • HIPAA compliant • Your data stays yours
-            </p>
-          </div>
-        </div>
+       
       </div>
     </div>
+    </>
   )
 }
 

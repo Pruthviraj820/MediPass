@@ -1,4 +1,4 @@
-import { useAuthStore } from '../../stores/authStore'
+import { useAuthStore } from '../stores/authStore'
 import { Link, useNavigate, useLocation } from 'react-router-dom'
 import { LogOut, User, Home, Barcode, FileText, Shield } from 'lucide-react'
 

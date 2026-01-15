@@ -1,19 +1,18 @@
 import { Link } from 'react-router-dom'
-import { ArrowRight, ShieldCheck, Smartphone, Zap, Users, HeartPulse } from 'lucide-react'
+import { ArrowRight, ShieldCheck, Smartphone, Users, HeartPulse } from 'lucide-react'
 import './LandingPage.css'
+import Footer from './Footer'
+import Navbar from './Navbar'
 
 const LandingPage = () => {
   return (
+    <>
+    <Navbar/>
     <div className="landing-root">
-      
+
       {/* Hero */}
       <section className="hero">
         <div className="container text-center">
-          
-          <div className="badge">
-            <Zap size={20} />
-            <span>Hackathon Winner 2026 🚀</span>
-          </div>
 
           <h1 className="hero-title">
             Your Complete Health Record
@@ -33,7 +32,7 @@ const LandingPage = () => {
             </Link>
 
             <Link to="/auth" className="btn btn-secondary">
-              Doctor Login
+              Already a user? Login
             </Link>
           </div>
 
@@ -58,15 +57,20 @@ const LandingPage = () => {
                 <Smartphone size={40} />
               </div>
               <h3>QR Code Access</h3>
-              <p>One scan gives doctors instant access to your complete medical profile.</p>
+              <p>
+                One scan gives doctors instant access to your complete medical profile.
+              </p>
             </div>
 
             <div className="feature-card">
               <div className="icon-box green">
                 <ShieldCheck size={40} />
               </div>
-              <h3>Healthcare Grade Security</h3>
-              <p>End-to-end encryption with healthcare compliance standards. Your data stays yours.</p>
+              <h3>Healthcare Reports</h3>
+              <p>
+                One-stop destination for all your medical reports and history.
+                Accessible to both doctors and patients.
+              </p>
             </div>
 
             <div className="feature-card">
@@ -74,14 +78,18 @@ const LandingPage = () => {
                 <Users size={40} />
               </div>
               <h3>Works Everywhere</h3>
-              <p>Compatible with any smartphone camera. No special apps required.</p>
+              <p>
+                Compatible with any smartphone camera. No special apps required.
+              </p>
             </div>
 
           </div>
         </div>
       </section>
 
+      <Footer/>
     </div>
+    </>
   )
 }
 
