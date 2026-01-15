@@ -1,246 +1,259 @@
-import React from 'react'
-import { View, Text, StyleSheet, ScrollView } from 'react-native'
+import React, { useEffect, useState } from 'react'
+import {
+  View,
+  Text,
+  StyleSheet,
+  ScrollView,
+  ActivityIndicator,
+  TouchableOpacity,
+} from 'react-native'
 import { Ionicons } from '@expo/vector-icons'
-import { mockPatients } from '../../data/mockData'
+import { onAuthStateChanged } from 'firebase/auth'
+import { doc, onSnapshot, setDoc, serverTimestamp } from 'firebase/firestore'
+
 import Navbar from '../../components/common/Navbar'
+import { auth, db } from '../../services/firebase'
 import { colors } from '../../constants/colors'
 
-const PatientEmergencyProfile = () => {
-  const patient = mockPatients[0]
-  
+const DEFAULT_PROFILE = {
+  name: 'Patient',
+  email: '',
+  phone: '',
+  role: 'patient',
+  bloodGroup: 'Unknown',
+  allergies: [],
+  medicalConditions: [],
+  emergencyContacts: []
+}
+
+const PatientEmergencyProfile = ({ navigation }) => {
+  const [profile, setProfile] = useState(null)
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    if (!auth || !db) {
+      console.warn('Firebase not initialized for PatientEmergencyProfile')
+      setLoading(false)
+      return
+    }
+
+    const unsubscribeAuth = onAuthStateChanged(auth, (user) => {
+      if (!user) {
+        setProfile(null)
+        setLoading(false)
+        return
+      }
+
+      const ref = doc(db, 'users', user.uid)
+
+      const unsubscribeDoc = onSnapshot(
+        ref,
+        async (snap) => {
+          try {
+            if (!snap.exists()) {
+              const newProfile = {
+                ...DEFAULT_PROFILE,
+                name: user.displayName || 'New Patient',
+                email: user.email || '',
+                createdAt: serverTimestamp(),
+              }
+
+              await setDoc(ref, newProfile, { merge: true })
+              setProfile(newProfile)
+              setLoading(false)
+              return
+            }
+
+            const data = snap.data() || {}
+
+            setProfile({
+              name: data.name || DEFAULT_PROFILE.name,
+              email: data.email || '',
+              phone: data.phone || '',
+              role: data.role || 'patient',
+              bloodGroup: data.bloodGroup || 'Unknown',
+              allergies: Array.isArray(data.allergies) ? data.allergies : [],
+              medicalConditions: Array.isArray(data.medicalConditions)
+                ? data.medicalConditions
+                : [],
+              emergencyContacts: Array.isArray(data.emergencyContacts)
+                ? data.emergencyContacts
+                : [],
+            })
+
+            setLoading(false)
+          } catch (e) {
+            console.error('Profile load error:', e)
+            setProfile(null)
+            setLoading(false)
+          }
+        },
+        (error) => {
+          console.error('onSnapshot error in PatientEmergencyProfile:', error)
+          setProfile(null)
+          setLoading(false)
+        },
+      )
+
+      return unsubscribeDoc
+    })
+
+    return () => {
+      if (typeof unsubscribeAuth === 'function') {
+        unsubscribeAuth()
+      }
+    }
+  }, [])
+
+  if (loading) {
+    return (
+      <View style={styles.center}>
+        <ActivityIndicator size="large" color={colors?.primary?.[600] || '#000'} />
+      </View>
+    )
+  }
+
+  if (!profile) {
+    return (
+      <View style={styles.center}>
+        <Ionicons name="alert-circle-outline" size={64} color={colors?.neutral?.[400] || '#999'} />
+        <Text style={styles.errorText}>Please log in to view your emergency profile</Text>
+      </View>
+    )
+  }
+
+  const avatarLetter = profile.name?.[0]?.toUpperCase() || 'P'
+
   return (
     <View style={styles.container}>
       <Navbar />
-      <ScrollView style={styles.content} contentContainerStyle={styles.contentContainer}>
+
+      <ScrollView contentContainerStyle={styles.content}>
+        {/* HEADER */}
         <View style={styles.header}>
-          <View style={styles.iconContainer}>
-            <Ionicons name="warning" size={32} color={colors.neutral[700]} />
-          </View>
+          <Ionicons name="warning" size={32} color={colors?.neutral?.[700] || '#333'} />
           <View>
             <Text style={styles.title}>Emergency Profile</Text>
-            <Text style={styles.subtitle}>Critical information for healthcare providers</Text>
+            <Text style={styles.subtitle}>Critical medical information</Text>
           </View>
         </View>
 
+        {/* PATIENT CARD */}
         <View style={styles.card}>
-          <View style={styles.grid}>
-            {/* Profile Info */}
-            <View style={styles.section}>
-              <View style={styles.sectionHeader}>
-                <Ionicons name="shield" size={32} color={colors.primary[600]} />
-                <Text style={styles.sectionTitle}>Patient Information</Text>
-              </View>
-              
-              <View style={styles.profileInfo}>
-                <View style={styles.profileCard}>
-                  <View style={styles.avatar}>
-                    <Text style={styles.avatarText}>{patient.name[0]}</Text>
-                  </View>
-                  <View>
-                    <Text style={styles.name}>{patient.name}</Text>
-                    <Text style={styles.email}>{patient.email}</Text>
-                  </View>
-                </View>
-
-                <View style={styles.infoGrid}>
-                  <View style={styles.infoCard}>
-                    <Ionicons name="water" size={32} color={colors.primary[600]} />
-                    <Text style={styles.infoValue}>{patient.bloodGroup}</Text>
-                    <Text style={styles.infoLabel}>Blood Group</Text>
-                  </View>
-                  <View style={styles.infoCard}>
-                    <Ionicons name="call" size={32} color={colors.success[600]} />
-                    <Text style={styles.infoValue}>{patient.phone}</Text>
-                    <Text style={styles.infoLabel}>Emergency Contact</Text>
-                  </View>
-                </View>
-              </View>
+          <View style={styles.profileRow}>
+            <View style={styles.avatar}>
+              <Text style={styles.avatarText}>{avatarLetter}</Text>
             </View>
-
-            {/* Allergies */}
-            <View style={styles.section}>
-              <View style={styles.sectionHeader}>
-                <Ionicons name="warning" size={32} color={colors.neutral[700]} />
-                <Text style={styles.sectionTitle}>Allergies & Conditions</Text>
-              </View>
-              
-              <View style={styles.allergiesList}>
-                {patient.allergies.map((allergy, index) => (
-                  <View key={index} style={styles.allergyItem}>
-                    <View style={styles.allergyDot} />
-                    <Text style={styles.allergyText}>{allergy}</Text>
-                  </View>
-                ))}
-                
-                {patient.allergies.length === 0 && (
-                  <View style={styles.noAllergies}>
-                    <Ionicons name="shield-checkmark" size={64} color={colors.success[600]} />
-                    <Text style={styles.noAllergiesText}>No known allergies</Text>
-                  </View>
-                )}
-              </View>
+            <View>
+              <Text style={styles.name}>{profile.name}</Text>
+              <Text style={styles.email}>{profile.email || 'No email'}</Text>
             </View>
           </View>
+
+          <View style={styles.bloodCard}>
+            <Ionicons name="water" size={26} color={colors?.primary?.[600] || '#2563EB'} />
+            <Text style={styles.bloodValue}>{profile.bloodGroup}</Text>
+            <Text style={styles.bloodLabel}>Blood Group</Text>
+          </View>
         </View>
+
+        {renderList('Emergency Contacts', 'call', profile.emergencyContacts, colors?.success?.[600], 'No emergency contacts')}
+        {renderList('Allergies', 'warning', profile.allergies, colors?.neutral?.[700], 'No known allergies')}
+        {renderList('Medical Conditions', 'fitness', profile.medicalConditions, colors?.error?.[600], 'No known conditions')}
+
+        <TouchableOpacity
+          style={styles.editBtn}
+          onPress={() => navigation.navigate('EditEmergencyProfile')}
+        >
+          <Ionicons name="create-outline" size={20} color="white" />
+          <Text style={styles.editText}>Edit Emergency Profile</Text>
+        </TouchableOpacity>
       </ScrollView>
     </View>
   )
 }
 
+/* ------------------ SMALL COMPONENT ------------------ */
+
+const renderList = (title, icon, items, color, empty) => (
+  <View style={styles.section}>
+    <View style={styles.sectionHeader}>
+      <Ionicons name={icon} size={22} color={color || '#333'} />
+      <Text style={styles.sectionTitle}>{title}</Text>
+    </View>
+
+    {items.length ? (
+      items.map((item, i) => (
+        <View key={i} style={styles.item}>
+          <Text style={styles.itemText}>
+            {typeof item === 'string' ? item : `${item.name} — ${item.phone}`}
+          </Text>
+        </View>
+      ))
+    ) : (
+      <Text style={styles.empty}>{empty}</Text>
+    )}
+  </View>
+)
+
+/* ------------------ STYLES ------------------ */
+
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: colors.neutral[50],
-  },
-  content: {
-    flex: 1,
-  },
-  contentContainer: {
-    padding: 24,
-    gap: 32,
-  },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 16,
-  },
-  iconContainer: {
-    width: 56,
-    height: 56,
-    borderRadius: 16,
-    backgroundColor: colors.neutral[200],
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  title: {
-    fontSize: 32,
-    fontWeight: 'bold',
-    color: colors.neutral[900],
-  },
-  subtitle: {
-    fontSize: 16,
-    color: colors.neutral[600],
-  },
-  card: {
-    backgroundColor: colors.white,
-    borderRadius: 24,
-    padding: 24,
-    shadowColor: colors.black,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.1,
-    shadowRadius: 12,
-    elevation: 8,
-  },
-  grid: {
-    gap: 32,
-  },
-  section: {
-    gap: 24,
-  },
-  sectionHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-  },
-  sectionTitle: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: colors.neutral[900],
-  },
-  profileInfo: {
-    gap: 20,
-  },
-  profileCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: colors.neutral[50],
-    padding: 16,
-    borderRadius: 16,
-    gap: 16,
-  },
+  container: { flex: 1, backgroundColor: colors?.neutral?.[50] || '#FAFAFA' },
+  content: { padding: 24, gap: 24 },
+
+  center: { flex: 1, justifyContent: 'center', alignItems: 'center' },
+
+  header: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+  title: { fontSize: 30, fontWeight: '800' },
+  subtitle: { color: '#666' },
+
+  card: { backgroundColor: 'white', padding: 20, borderRadius: 20, gap: 20 },
+
+  profileRow: { flexDirection: 'row', gap: 14, alignItems: 'center' },
   avatar: {
-    width: 48,
-    height: 48,
-    borderRadius: 12,
-    backgroundColor: colors.primary[100],
-    alignItems: 'center',
-    justifyContent: 'center',
+    width: 52, height: 52, borderRadius: 14,
+    backgroundColor: colors?.primary?.[100] || '#DBEAFE',
+    justifyContent: 'center', alignItems: 'center'
   },
-  avatarText: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: colors.primary[600],
-  },
-  name: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    color: colors.neutral[900],
-  },
-  email: {
-    fontSize: 16,
-    color: colors.neutral[600],
-  },
-  infoGrid: {
-    flexDirection: 'row',
-    gap: 16,
-  },
-  infoCard: {
-    flex: 1,
-    backgroundColor: colors.primary[50],
-    borderRadius: 12,
-    padding: 20,
-    alignItems: 'center',
-  },
-  infoValue: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: colors.primary[800],
-    marginTop: 12,
-    marginBottom: 4,
-  },
-  infoLabel: {
-    fontSize: 14,
-    color: colors.primary[700],
-  },
-  allergiesList: {
-    gap: 16,
-  },
-  allergyItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: colors.neutral[100],
-    borderWidth: 1,
-    borderColor: colors.neutral[200],
+  avatarText: { fontSize: 22, fontWeight: '800', color: colors?.primary?.[700] || '#1D4ED8' },
+
+  name: { fontSize: 20, fontWeight: '700' },
+  email: { color: '#666' },
+
+  bloodCard: {
+    backgroundColor: colors?.primary?.[50] || '#EFF6FF',
     borderRadius: 16,
+    padding: 18,
+    alignItems: 'center'
+  },
+  bloodValue: { fontSize: 26, fontWeight: '800', marginTop: 6 },
+  bloodLabel: { color: '#555' },
+
+  section: { backgroundColor: 'white', padding: 20, borderRadius: 18, gap: 10 },
+  sectionHeader: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  sectionTitle: { fontSize: 18, fontWeight: '700' },
+
+  item: {
+    backgroundColor: '#F4F4F5',
+    padding: 14,
+    borderRadius: 12
+  },
+  itemText: { fontSize: 15, fontWeight: '600' },
+  empty: { fontStyle: 'italic', color: '#888' },
+
+  editBtn: {
+    flexDirection: 'row',
+    backgroundColor: colors?.primary?.[600] || '#2563EB',
     padding: 16,
-    gap: 16,
-  },
-  allergyDot: {
-    width: 12,
-    height: 12,
-    borderRadius: 6,
-    backgroundColor: colors.neutral[700],
-  },
-  allergyText: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: colors.neutral[900],
-  },
-  noAllergies: {
-    alignItems: 'center',
-    padding: 32,
-    backgroundColor: colors.success[50],
-    borderWidth: 2,
-    borderColor: colors.success[200],
     borderRadius: 16,
+    gap: 10,
+    alignItems: 'center',
+    justifyContent: 'center'
   },
-  noAllergiesText: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: colors.success[800],
-    marginTop: 16,
-  },
+  editText: { color: 'white', fontSize: 16, fontWeight: '700' },
+
+  errorText: { marginTop: 12, fontSize: 16, color: '#666' }
 })
 
 export default PatientEmergencyProfile
-

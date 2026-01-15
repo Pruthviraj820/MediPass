@@ -28,6 +28,7 @@ import PatientQRCode from '../pages/patient/PatientQRCode'
 import PatientMedicalTimeline from '../pages/patient/PatientMedicalTimeline'
 import PatientPrescriptions from '../pages/patient/PatientPrescriptions'
 // import PatientEmergencyProfile from '../pages/patient/PatientEmergencyProfile'
+import EditEmergencyProfile from '../pages/patient/EditEmergencyProfile'
 
 import PatientChatbot from '../pages/patient/PatientChatbot'
 import PatientProfile from '../pages/patient/PatientProfile'
@@ -118,6 +119,7 @@ const PatientTabNavigator = () => {
         component={PatientProfile}
         options={{ title: 'Profile' }}
       />
+
     </Tab.Navigator>
   )
 }
@@ -177,7 +179,7 @@ const DoctorTabNavigator = () => {
 
 const AppNavigator = () => {
   const { user, token, initializeAuth } = useAuthStore()
-  
+
   useEffect(() => {
     initializeAuth()
   }, [])
@@ -227,6 +229,12 @@ const AppNavigator = () => {
         ) : isPatient ? (
           <>
             <Stack.Screen name="PatientRoot" component={PatientTabNavigator} />
+            {/* Emergency edit form (stack screen on top of tabs) */}
+            <Stack.Screen
+              name="EditEmergencyProfile"
+              component={EditEmergencyProfile}
+              options={{ headerShown: false }}
+            />
           </>
         ) : isDoctor ? (
           <>
