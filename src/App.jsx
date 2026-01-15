@@ -1,0 +1,84 @@
+import { Routes, Route, Navigate } from "react-router-dom"
+import { useEffect } from "react"
+import { useAuthStore } from "./stores/authStore"
+
+// Layouts
+import PublicLayout from "./layouts/PublicLayout"
+import PatientLayout from "./layouts/PatientLayout"
+import DoctorLayout from "./layouts/DoctorLayout"
+
+// Public Pages
+import LandingPage from "./pages/public/LandingPage"
+import RoleSelection from "./pages/public/RoleSelection"
+import AuthPage from "./pages/public/AuthPage"
+
+// Patient Pages
+import PatientDashboard from "./pages/patient/PatientDashboard"
+import PatientQRCode from "./pages/patient/PatientQRCode"
+import PatientMedicalTimeline from "./pages/patient/PatientMedicalTimeline"
+import PatientPrescriptions from "./pages/patient/PatientPrescriptions"
+import PatientEmergencyProfile from "./pages/patient/PatientEmergencyProfile"
+
+// Doctor Pages
+import DoctorDashboard from "./pages/doctor/DoctorDashboard"
+import DoctorQRScanner from "./pages/doctor/DoctorQRScanner"
+import DoctorPatientProfile from "./pages/doctor/DoctorPatientProfile"
+import DoctorAddDiagnosis from "./pages/doctor/DoctorAddDiagnosis"
+
+import ProtectedRoute from "./components/ProtectedRoute"
+
+function App() {
+  const { initializeAuth, loading } = useAuthStore()
+
+  useEffect(() => {
+    initializeAuth()
+  }, [])
+
+  if (loading) return null // or loader
+
+  return (
+    <Routes>
+      {/* Public */}
+      <Route element={<PublicLayout />}>
+        <Route index element={<LandingPage />} />
+        <Route path="/auth" element={<AuthPage />} />
+        <Route path="/select-role" element={<RoleSelection />} />
+      </Route>
+
+      {/* Patient */}
+      <Route
+        path="/patient/*"
+        element={
+          <ProtectedRoute role="patient">
+            <PatientLayout />
+          </ProtectedRoute>
+        }
+      >
+        <Route index element={<PatientDashboard />} />
+        <Route path="qr-code" element={<PatientQRCode />} />
+        <Route path="medical-timeline" element={<PatientMedicalTimeline />} />
+        <Route path="prescriptions" element={<PatientPrescriptions />} />
+        <Route path="emergency-profile" element={<PatientEmergencyProfile />} />
+      </Route>
+
+      {/* Doctor */}
+      <Route
+        path="/doctor/*"
+        element={
+          <ProtectedRoute role="doctor">
+            <DoctorLayout />
+          </ProtectedRoute>
+        }
+      >
+        <Route index element={<DoctorDashboard />} />
+        <Route path="scanner" element={<DoctorQRScanner />} />
+        <Route path="patient/:id" element={<DoctorPatientProfile />} />
+        <Route path="add-diagnosis/:patientId" element={<DoctorAddDiagnosis />} />
+      </Route>
+
+      <Route path="*" element={<Navigate to="/" />} />
+    </Routes>
+  )
+}
+
+export default App
