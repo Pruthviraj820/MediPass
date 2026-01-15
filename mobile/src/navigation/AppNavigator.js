@@ -44,6 +44,7 @@ import DoctorQRScanner from '../pages/doctor/DoctorQRScanner'
 import DoctorPatientProfile from '../pages/doctor/DoctorPatientProfile'
 import DoctorAddDiagnosis from '../pages/doctor/DoctorAddDiagnosis'
 import DoctorProfile from '../pages/doctor/DoctorProfile'
+import DoctorPrescribeMedication from '../pages/doctor/DoctorPrescribeMedication'
 import PatientEmergencyProfile from '../pages/patient/PatientEmergencyProfile'
 
 
@@ -277,6 +278,11 @@ const AppNavigator = () => {
             <Stack.Screen
               name="DoctorAddDiagnosis"
               component={DoctorAddDiagnosis}
+              options={{ headerShown: false }}
+            />
+            <Stack.Screen
+              name="DoctorPrescribeMedication"
+              component={DoctorPrescribeMedication}
               options={{ headerShown: false }}
             />
           </>

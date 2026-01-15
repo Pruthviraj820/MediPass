@@ -1,12 +1,61 @@
-import React from 'react'
-import { View, Text, StyleSheet, ScrollView } from 'react-native'
+import React, { useEffect, useMemo, useState } from 'react'
+import { View, Text, StyleSheet, ScrollView, ActivityIndicator } from 'react-native'
 import { Ionicons } from '@expo/vector-icons'
 import { format } from 'date-fns'
-import { mockPrescriptions } from '../../data/mockData'
+import { collection, onSnapshot, orderBy, query } from 'firebase/firestore'
 import Navbar from '../../components/common/Navbar'
 import { colors } from '../../constants/colors'
+import { auth, db } from '../../services/firebase'
 
 const PatientPrescriptions = () => {
+  const [loading, setLoading] = useState(true)
+  const [prescriptions, setPrescriptions] = useState([])
+
+  useEffect(() => {
+    const user = auth?.currentUser
+    if (!db || !user) {
+      setPrescriptions([])
+      setLoading(false)
+      return
+    }
+
+    const q = query(
+      collection(db, 'users', user.uid, 'prescriptions'),
+      orderBy('createdAt', 'desc'),
+    )
+
+    const unsub = onSnapshot(
+      q,
+      (snap) => {
+        const rows = snap.docs.map((d) => ({ id: d.id, ...d.data() }))
+        setPrescriptions(rows)
+        setLoading(false)
+      },
+      (error) => {
+        console.error('Prescription subscription error:', error)
+        setPrescriptions([])
+        setLoading(false)
+      },
+    )
+
+    return () => unsub()
+  }, [])
+
+  const cards = useMemo(() => {
+    return prescriptions.map((p) => {
+      const createdAtDate =
+        p.createdAt && typeof p.createdAt?.toDate === 'function'
+          ? p.createdAt.toDate()
+          : null
+      const timeText = createdAtDate ? format(createdAtDate, 'dd MMM yyyy, HH:mm') : '—'
+
+      return {
+        ...p,
+        timeText,
+      }
+    })
+  }, [prescriptions])
+
   return (
     <View style={styles.container}>
       <Navbar />
@@ -22,45 +71,67 @@ const PatientPrescriptions = () => {
         </View>
 
         <View style={styles.grid}>
-          {mockPrescriptions.map(prescription => (
-            <View key={prescription.id} style={styles.card}>
+          {loading ? (
+            <View style={styles.center}>
+              <ActivityIndicator size="large" color={colors.primary[600]} />
+              <Text style={styles.loadingText}>Loading prescriptions...</Text>
+            </View>
+          ) : cards.length === 0 ? (
+            <View style={styles.center}>
+              <Ionicons name="document-text-outline" size={64} color={colors.neutral[400]} />
+              <Text style={styles.emptyTitle}>No prescriptions yet</Text>
+              <Text style={styles.emptySubtitle}>
+                Ask your doctor to scan your QR code and add prescriptions.
+              </Text>
+            </View>
+          ) : (
+            cards.map((prescription) => (
+              <View key={prescription.id} style={styles.card}>
               <View style={styles.cardHeader}>
                 <Text style={styles.cardTitle}>{prescription.name}</Text>
-                <View style={[styles.refillBadge, prescription.refills > 0 ? styles.refillBadgeActive : styles.refillBadgeWarning]}>
-                  <Text style={styles.refillText}>{prescription.refills} refills</Text>
+                <View
+                  style={[
+                    styles.refillBadge,
+                    prescription.refills > 0 ? styles.refillBadgeActive : styles.refillBadgeWarning,
+                  ]}
+                >
+                  <Text style={styles.refillText}>{prescription.refills ?? 0} refills</Text>
                 </View>
               </View>
               
               <View style={styles.details}>
                 <View style={styles.detailRow}>
                   <Text style={styles.detailLabel}>Dosage:</Text>
-                  <Text style={styles.detailValue}>{prescription.dosage}</Text>
+                  <Text style={styles.detailValue}>{prescription.dosage || '—'}</Text>
                 </View>
                 <View style={styles.detailRow}>
                   <Text style={styles.detailLabel}>Frequency:</Text>
-                  <Text style={styles.detailValue}>{prescription.frequency}</Text>
+                  <Text style={styles.detailValue}>{prescription.frequency || '—'}</Text>
                 </View>
                 <View style={styles.detailRow}>
                   <Text style={styles.detailLabel}>Duration:</Text>
-                  <Text style={styles.detailValue}>{prescription.duration}</Text>
+                  <Text style={styles.detailValue}>{prescription.duration || '—'}</Text>
+                </View>
+                <View style={styles.detailRow}>
+                  <Text style={styles.detailLabel}>Prescribed:</Text>
+                  <Text style={styles.detailValue}>{prescription.timeText}</Text>
                 </View>
               </View>
 
               <View style={styles.instructionsContainer}>
-                <Text style={styles.instructions}>{prescription.instructions}</Text>
+                <Text style={styles.instructions}>{prescription.instructions || '—'}</Text>
               </View>
 
               <View style={styles.footer}>
                 <View style={styles.timeContainer}>
                   <Ionicons name="time" size={20} color={colors.primary[600]} />
-                  <Text style={styles.timeText}>
-                    {format(new Date(prescription.nextDose), 'HH:mm')}
-                  </Text>
+                  <Text style={styles.timeText}>{prescription.doctorName ? `Dr. ${prescription.doctorName}` : 'Doctor'}</Text>
                 </View>
                 <Ionicons name="checkmark-circle" size={32} color={colors.success[500]} />
               </View>
             </View>
-          ))}
+            ))
+          )}
         </View>
       </ScrollView>
     </View>
@@ -103,6 +174,27 @@ const styles = StyleSheet.create({
   },
   grid: {
     gap: 24,
+  },
+  center: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 40,
+    gap: 12,
+  },
+  loadingText: {
+    color: colors.neutral[600],
+    fontSize: 14,
+  },
+  emptyTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: colors.neutral[900],
+  },
+  emptySubtitle: {
+    fontSize: 14,
+    color: colors.neutral[600],
+    textAlign: 'center',
+    paddingHorizontal: 20,
   },
   card: {
     backgroundColor: colors.white,

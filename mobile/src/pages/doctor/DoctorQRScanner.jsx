@@ -6,6 +6,8 @@ import { CameraView, useCameraPermissions } from 'expo-camera'
 import { mockPatients } from '../../data/mockData'
 import Navbar from '../../components/common/Navbar'
 import { colors } from '../../constants/colors'
+import { auth, db } from '../../services/firebase'
+import { collection, doc, getDocs, query, serverTimestamp, setDoc, where } from 'firebase/firestore'
 
 const DoctorQRScanner = () => {
   const [permission, requestPermission] = useCameraPermissions()
@@ -49,43 +51,92 @@ const DoctorQRScanner = () => {
       
       console.log('Looking up patient with email:', patientEmail)
       
-      // Try to find patient in mock data first
-      let patient = mockPatients.find(p => p.email.toLowerCase() === patientEmail)
-      
-      // If not found in mock data, try Firebase (if available)
-      if (!patient) {
+      // Try to find patient in mock data first (offline/dev)
+      let patient = mockPatients.find((p) => p.email.toLowerCase() === patientEmail)
+
+      // If not found in mock data, query Firestore by email
+      if (!patient && db) {
         try {
-          const { initFirebase } = require('../services/firebase')
-          const firebase = initFirebase()
-          
-          if (firebase && firebase.db) {
-            // Use dynamic require to prevent bundler errors
-            const requireModule = new Function('moduleName', 'return require(moduleName)')
-            const firestore = requireModule('firebase/firestore')
-            const { collection, query, where, getDocs } = firestore
-            
-            // Query Firestore for patient by email
-            const usersRef = collection(firebase.db, 'users')
-            const q = query(usersRef, where('email', '==', patientEmail), where('role', '==', 'patient'))
-            const querySnapshot = await getDocs(q)
-            
-            if (!querySnapshot.empty) {
-              const doc = querySnapshot.docs[0]
-              const userData = doc.data()
-              patient = {
-                id: doc.id,
-                ...userData
-              }
-            }
+          const usersRef = collection(db, 'users')
+          const q = query(usersRef, where('email', '==', patientEmail), where('role', '==', 'patient'))
+          const querySnapshot = await getDocs(q)
+          if (!querySnapshot.empty) {
+            const patientDoc = querySnapshot.docs[0]
+            const userData = patientDoc.data()
+            patient = { id: patientDoc.id, uid: patientDoc.id, ...userData }
           }
         } catch (error) {
-          console.log('Firebase lookup failed, using mock data only:', error)
+          console.log('Firestore lookup failed:', error)
         }
       }
       
       if (patient) {
         console.log('Patient found:', patient)
         setScannedPatient(patient)
+
+        Alert.alert(
+          'Add Patient?',
+          `Name: ${patient.name || 'Unknown'}\nEmail: ${patient.email || patientEmail}\n\nDo you want to add/accept this patient?`,
+          [
+            {
+              text: 'Cancel',
+              style: 'cancel',
+              onPress: () => {
+                // keep scanned state, allow user to scan again manually
+              },
+            },
+            {
+              text: 'Accept',
+              style: 'default',
+              onPress: async () => {
+                try {
+                  const doctorUid = auth?.currentUser?.uid
+                  if (!doctorUid || !db) {
+                    Alert.alert('Error', 'Doctor not logged in')
+                    return
+                  }
+                  const patientUid = patient.id || patient.uid
+                  if (!patientUid) {
+                    Alert.alert('Error', 'Invalid patient record')
+                    return
+                  }
+
+                  // Link patient under doctor
+                  await setDoc(
+                    doc(db, 'doctors', doctorUid, 'patients', patientUid),
+                    {
+                      patientId: patientUid,
+                      email: patient.email || patientEmail,
+                      name: patient.name || '',
+                      addedAt: serverTimestamp(),
+                    },
+                    { merge: true },
+                  )
+
+                  // Link doctor under patient (optional, useful later)
+                  await setDoc(
+                    doc(db, 'users', patientUid, 'doctors', doctorUid),
+                    {
+                      doctorId: doctorUid,
+                      addedAt: serverTimestamp(),
+                    },
+                    { merge: true },
+                  )
+
+                  Alert.alert('Success', 'Patient added')
+                  navigation.navigate('DoctorPrescribeMedication', {
+                    patientId: patientUid,
+                    patientName: patient.name || '',
+                    patientEmail: patient.email || patientEmail,
+                  })
+                } catch (error) {
+                  console.error('Accept patient error:', error)
+                  Alert.alert('Error', error?.message || 'Failed to accept patient')
+                }
+              },
+            },
+          ],
+        )
       } else {
         console.log('Patient not found for email:', patientEmail)
         // Patient not found - show error
