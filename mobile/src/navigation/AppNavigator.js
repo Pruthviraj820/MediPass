@@ -1,5 +1,5 @@
 import React, { useEffect, /*useRef*/ } from 'react'
-import { NavigationContainer } from '@react-navigation/native'
+import { NavigationContainer, CommonActions } from '@react-navigation/native'
 import { createNativeStackNavigator } from '@react-navigation/native-stack'
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs'
 import { Ionicons } from '@expo/vector-icons'
@@ -206,30 +206,53 @@ const AppNavigator = () => {
 
   useEffect(() => {
     // Navigate to appropriate screen when auth state changes
-    if (navigationRef.current) {
-      const isAuthenticated = !!token
-      const isPatient = user?.role === 'patient'
-      const isDoctor = user?.role === 'doctor'
+    // Use a small delay to ensure navigation is ready
+    const timeoutId = setTimeout(() => {
+      if (navigationRef.current?.isReady()) {
+        const isAuthenticated = !!token
+        const isPatient = user?.role === 'patient'
+        const isDoctor = user?.role === 'doctor'
 
-      if (isAuthenticated) {
-        if (isPatient) {
-          navigationRef.current.resetRoot({
-            index: 0,
-            routes: [{ name: 'PatientRoot' }],
-          })
-        } else if (isDoctor) {
-          navigationRef.current.resetRoot({
-            index: 0,
-            routes: [{ name: 'DoctorRoot' }],
-          })
+        try {
+          if (isAuthenticated) {
+            if (isPatient) {
+              navigationRef.current.dispatch(
+                CommonActions.reset({
+                  index: 0,
+                  routes: [{ name: 'PatientRoot' }],
+                })
+              )
+            } else if (isDoctor) {
+              navigationRef.current.dispatch(
+                CommonActions.reset({
+                  index: 0,
+                  routes: [{ name: 'DoctorRoot' }],
+                })
+              )
+            }
+          } else {
+            // When logged out, navigate to Landing
+            const currentRoute = navigationRef.current.getCurrentRoute()
+            if (currentRoute?.name !== 'Landing') {
+              // Use navigate instead of reset for logout to avoid navigation state issues
+              navigationRef.current.navigate('Landing')
+            }
+          }
+        } catch (error) {
+          console.error('Navigation reset error:', error)
+          // Fallback: try simple navigate
+          if (!isAuthenticated) {
+            try {
+              navigationRef.current.navigate('Landing')
+            } catch (navError) {
+              console.error('Fallback navigation error:', navError)
+            }
+          }
         }
-      } else {
-        navigationRef.current.resetRoot({
-          index: 0,
-          routes: [{ name: 'Landing' }],
-        })
       }
-    }
+    }, 100) // Small delay to ensure state is updated
+
+    return () => clearTimeout(timeoutId)
   }, [user, token])
 
   const isAuthenticated = !!token

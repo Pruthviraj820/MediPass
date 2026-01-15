@@ -1,11 +1,10 @@
 import React, { useState, useEffect } from 'react'
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert, ActivityIndicator } from 'react-native'
-import { CommonActions, useNavigation } from '@react-navigation/native'
+import { useNavigation } from '@react-navigation/native'
 import { Ionicons } from '@expo/vector-icons'
 import { doc, getDoc, onSnapshot } from 'firebase/firestore'
 import { auth, db } from '../../services/firebase'
 import { useAuthStore } from '../../stores/authStore'
-import { navigationRef } from '../../navigation/AppNavigator'
 import Navbar from '../../components/common/Navbar'
 import { colors } from '../../constants/colors'
 
@@ -78,15 +77,7 @@ const DoctorProfile = () => {
           style: 'destructive',
           onPress: () => {
             logout()
-            // Reset navigation to Landing page
-            if (navigationRef.current) {
-              navigationRef.current.dispatch(
-                CommonActions.reset({
-                  index: 0,
-                  routes: [{ name: 'Landing' }],
-                })
-              )
-            }
+            // Navigation will be handled automatically by AppNavigator useEffect
           }
         }
       ]
