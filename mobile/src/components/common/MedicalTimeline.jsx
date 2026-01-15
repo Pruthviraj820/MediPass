@@ -79,8 +79,8 @@ const MedicalTimeline = ({ patientId }) => {
   return (
     <View style={styles.container}>
       <View style={styles.header}>
-        <Ionicons name="medical" size={32} color={colors.primary[600]} />
-        <Text style={styles.title}>Medical History</Text>
+      <Ionicons name="pulse" size={28} color={colors.primary[600]} />        
+      <Text style={styles.title}>Medical History</Text>
       </View>
 
       <View style={styles.timeline}>

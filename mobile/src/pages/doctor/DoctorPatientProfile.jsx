@@ -200,6 +200,7 @@ const DoctorPatientProfile = () => {
         })
       } catch (shareError) {
         // If sharing fails, show the report in an alert
+        console.log(shareError);
         Alert.alert(
           'Medical Records Report',
           reportText.substring(0, 500) + (reportText.length > 500 ? '...' : ''),
@@ -268,6 +269,7 @@ const DoctorPatientProfile = () => {
               <Ionicons name="create" size={20} color={colors.white} />
               <Text style={styles.actionButtonText}>Add Diagnosis</Text>
             </TouchableOpacity>
+
             <TouchableOpacity
               style={[styles.actionButton, styles.actionButtonSecondary]}
               onPress={() => navigation.navigate('DoctorPrescribeMedication', {
@@ -288,8 +290,8 @@ const DoctorPatientProfile = () => {
                 <ActivityIndicator color={colors.white} size="small" />
               ) : (
                 <>
-                  <Ionicons name="download" size={20} color={colors.white} />
-                  <Text style={styles.actionButtonText}>Download</Text>
+                  <Ionicons name="share" size={20} color={colors.white} />
+                  <Text style={styles.actionButtonText}>Share</Text>
                 </>
               )}
             </TouchableOpacity>
@@ -300,7 +302,7 @@ const DoctorPatientProfile = () => {
         <View style={styles.emergencyGrid}>
           <View style={styles.emergencyCard}>
             <View style={styles.emergencyHeader}>
-              <Ionicons name="warning" size={24} color={colors.error[600]} />
+              <Ionicons name="warning" size={22} color={colors.error[600]} />
               <Text style={styles.emergencyTitle}>Allergies</Text>
             </View>
             <View style={styles.allergiesList}>
@@ -319,7 +321,7 @@ const DoctorPatientProfile = () => {
 
           <View style={styles.emergencyCard}>
             <View style={styles.emergencyHeader}>
-              <Ionicons name="fitness" size={24} color={colors.error[600]} />
+              <Ionicons name="fitness" size={22} color={colors.error[600]} />
               <Text style={styles.emergencyTitle}>Medical Conditions</Text>
             </View>
             <View style={styles.allergiesList}>
@@ -355,10 +357,6 @@ const DoctorPatientProfile = () => {
 
         {/* Medical History */}
         <View style={styles.prescriptionsSection}>
-          <View style={styles.sectionHeader}>
-            <Ionicons name="pulse" size={28} color={colors.primary[600]} />
-            <Text style={styles.sectionTitle}>Medical History</Text>
-          </View>
           <MedicalTimeline patientId={patientId} />
         </View>
 
@@ -499,7 +497,7 @@ const styles = StyleSheet.create({
     color: colors.primary[600],
   },
   actionButtonsContainer: {
-    flexDirection: 'row',
+    flexDirection: 'column',
     gap: 8,
     flexWrap: 'wrap',
   },
@@ -509,6 +507,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
+    textAlign: 'center',
     backgroundColor: colors.primary[600],
     paddingVertical: 14,
     paddingHorizontal: 12,
@@ -539,7 +538,7 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: colors.white,
     borderRadius: 16,
-    padding: 24,
+    padding: 18,
     shadowColor: colors.black,
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
@@ -549,11 +548,11 @@ const styles = StyleSheet.create({
   emergencyHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 12,
+    gap: 8,
     marginBottom: 20,
   },
   emergencyTitle: {
-    fontSize: 20,
+    fontSize: 18,
     fontWeight: 'bold',
     color: colors.neutral[900],
   },

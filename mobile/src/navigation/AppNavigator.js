@@ -51,6 +51,7 @@ import DoctorEditProfile from '../pages/doctor/DoctorEditProfile'
 import DoctorPrivacySecurity from '../pages/doctor/DoctorPrivacySecurity'
 import DoctorNotifications from '../pages/doctor/DoctorNotifications'
 import DoctorHelpCenter from '../pages/doctor/DoctorHelpCenter'
+import DoctorTermsConditions from '../pages/doctor/DoctorTermsConditions'
 import DoctorPrescribeMedication from '../pages/doctor/DoctorPrescribeMedication'
 import PatientEmergencyProfile from '../pages/patient/PatientEmergencyProfile'
 
@@ -326,6 +327,11 @@ const AppNavigator = () => {
             <Stack.Screen
               name="DoctorHelpCenter"
               component={DoctorHelpCenter}
+              options={{ headerShown: false }}
+            />
+            <Stack.Screen
+              name="DoctorTermsConditions"
+              component={DoctorTermsConditions}
               options={{ headerShown: false }}
             />
             <Stack.Screen

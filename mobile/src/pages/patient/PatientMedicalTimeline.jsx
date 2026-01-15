@@ -1,11 +1,19 @@
 import React from 'react'
-import { View, Text, StyleSheet, ScrollView } from 'react-native'
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-native'
+import { useNavigation } from '@react-navigation/native'
 import { Ionicons } from '@expo/vector-icons'
 import MedicalTimeline from '../../components/common/MedicalTimeline'
 import Navbar from '../../components/common/Navbar'
 import { colors } from '../../constants/colors'
 
 const PatientMedicalTimeline = () => {
+  const navigation = useNavigation()
+
+  const handleShowQR = () => {
+    // Navigate to the PatientQRCode tab
+    navigation.navigate('PatientQRCode')
+  }
+
   return (
     <View style={styles.container}>
       <Navbar />
@@ -28,10 +36,10 @@ const PatientMedicalTimeline = () => {
           <Text style={styles.emptyText}>
             Your medical timeline will automatically update as healthcare providers add new records.
           </Text>
-          <View style={styles.emptyButton}>
-            <Ionicons name="calendar" size={20} color={colors.white} />
+          <TouchableOpacity style={styles.emptyButton} onPress={handleShowQR}>
+            <Ionicons name="qr-code" size={20} color={colors.white} />
             <Text style={styles.emptyButtonText}>Show QR to Doctor</Text>
-          </View>
+          </TouchableOpacity>
         </View>
       </ScrollView>
     </View>

@@ -177,7 +177,10 @@ const DoctorProfile = () => {
             <Ionicons name="chevron-forward" size={20} color={colors.neutral[400]} />
           </TouchableOpacity>
 
-          <TouchableOpacity style={styles.optionItem}>
+          <TouchableOpacity
+            style={styles.optionItem}
+            onPress={() => navigation.navigate('DoctorTermsConditions')}
+          >
             <View style={styles.optionLeft}>
               <View style={[styles.optionIcon, { backgroundColor: colors.neutral[200] }]}>
                 <Ionicons name="document-text" size={24} color={colors.neutral[700]} />
