@@ -1,6 +1,6 @@
 import { Link, useNavigate, useLocation } from 'react-router-dom'
 import { useAuthStore } from '../../stores/authStore'
-import { LogOut, Home, Barcode, Menu, X } from 'lucide-react'
+import { LogOut, Home, Barcode, Menu, X, User } from 'lucide-react'
 import { useState } from 'react'
 
 const Navbar = ({ showPatientNav = false, showDoctorNav = false }) => {
@@ -48,6 +48,11 @@ const Navbar = ({ showPatientNav = false, showDoctorNav = false }) => {
                   <Barcode className="w-5 h-5" />
                   <span>QR Code</span>
                 </Link>
+
+                <Link to="/patient/edit-profile" className={linkClass('/patient/edit-profile')}>
+                  <User className="w-5 h-5" />
+                  <span>Profile</span>
+                </Link>
               </>
             )}
 
@@ -62,18 +67,23 @@ const Navbar = ({ showPatientNav = false, showDoctorNav = false }) => {
                   <Barcode className="w-5 h-5" />
                   <span>Scan QR</span>
                 </Link>
+
+                <Link to="/doctor/edit-profile" className={linkClass('/doctor/edit-profile')}>
+                  <User className="w-5 h-5" />
+                  <span>Profile</span>
+                </Link>
               </>
             )}
 
             {/* User Section */}
             {user && (
               <div className="flex items-center space-x-4 ml-6 border-l pl-6 border-neutral-200">
-                <div className="w-10 h-10 rounded-xl bg-primary-600 text-white flex items-center justify-center font-semibold">
+                {/* <div className="w-10 h-10 rounded-xl bg-primary-600 text-white flex items-center justify-center font-semibold">
                   {user.name?.[0]?.toUpperCase()}
                 </div>
                 <span className="font-semibold text-neutral-900 hidden lg:block">
                   {user.name}
-                </span>
+                </span> */}
                 <button
                   onClick={handleLogout}
                   className="p-2 rounded-xl hover:bg-gray-100 transition"
@@ -107,6 +117,10 @@ const Navbar = ({ showPatientNav = false, showDoctorNav = false }) => {
                   <Barcode className="w-5 h-5" />
                   <span>QR Code</span>
                 </Link>
+                <Link to="/patient/edit-profile" className="mobile-link">
+                  <User className="w-5 h-5" />
+                  <span>Profile</span>
+                </Link>
               </>
             )}
 
@@ -119,6 +133,10 @@ const Navbar = ({ showPatientNav = false, showDoctorNav = false }) => {
                 <Link to="/doctor/scanner" className="mobile-link">
                   <Barcode className="w-5 h-5" />
                   <span>Scan QR</span>
+                </Link>
+                <Link to="/doctor/edit-profile" className="mobile-link">
+                  <User className="w-5 h-5" />
+                  <span>Profile</span>
                 </Link>
               </>
             )}

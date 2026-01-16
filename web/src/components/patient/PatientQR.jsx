@@ -45,6 +45,101 @@ const PatientQR = () => {
       window.btoa(unescape(encodeURIComponent(svgStr)))
   }
 
+  const shareQR = async () => {
+    try {
+      const svg = document.getElementById("qr-code")
+      const serializer = new XMLSerializer()
+      const svgStr = serializer.serializeToString(svg)
+
+      const canvas = document.createElement("canvas")
+      const ctx = canvas.getContext("2d")
+      const img = new Image()
+
+      img.onload = async () => {
+        canvas.width = img.width
+        canvas.height = img.height
+        ctx.drawImage(img, 0, 0)
+        
+        canvas.toBlob(async (blob) => {
+          const file = new File([blob], "medipass-qr.png", { type: "image/png" })
+          
+          // Check if Web Share API is available
+          if (navigator.share && navigator.canShare && navigator.canShare({ files: [file] })) {
+            try {
+              await navigator.share({
+                title: "My MediPass QR Code",
+                text: `My MediPass QR Code: ${qrValue}`,
+                files: [file],
+              })
+            } catch (err) {
+              if (err.name !== "AbortError") {
+                // Fallback to copy link if share fails
+                fallbackShare()
+              }
+            }
+          } else {
+            // Fallback for browsers that don't support Web Share API
+            fallbackShare()
+          }
+        }, "image/png")
+      }
+
+      img.src =
+        "data:image/svg+xml;base64," +
+        window.btoa(unescape(encodeURIComponent(svgStr)))
+    } catch (err) {
+      console.error("Error sharing QR code:", err)
+      fallbackShare()
+    }
+  }
+
+  const fallbackShare = async () => {
+    try {
+      // Try to copy QR code data URL to clipboard
+      const svg = document.getElementById("qr-code")
+      const serializer = new XMLSerializer()
+      const svgStr = serializer.serializeToString(svg)
+      const dataUrl = "data:image/svg+xml;base64," + window.btoa(unescape(encodeURIComponent(svgStr)))
+      
+      // Convert to PNG data URL
+      const canvas = document.createElement("canvas")
+      const ctx = canvas.getContext("2d")
+      const img = new Image()
+      
+      img.onload = async () => {
+        canvas.width = img.width
+        canvas.height = img.height
+        ctx.drawImage(img, 0, 0)
+        const pngDataUrl = canvas.toDataURL("image/png")
+        
+        // Try to copy image to clipboard (modern browsers)
+        try {
+          await navigator.clipboard.write([
+            new ClipboardItem({
+              "image/png": await fetch(pngDataUrl).then(r => r.blob())
+            })
+          ])
+          alert("QR Code copied to clipboard! You can paste it anywhere.")
+        } catch (clipErr) {
+          // If clipboard API fails, show share options
+          const shareText = `My MediPass QR Code: ${qrValue}\n\nShare this with healthcare providers to access my medical records.`
+          if (navigator.clipboard && navigator.clipboard.writeText) {
+            await navigator.clipboard.writeText(shareText)
+            alert("QR Code information copied to clipboard! You can share it via email or messaging apps.")
+          } else {
+            // Last resort: show the data
+            prompt("Copy this QR Code information:", shareText)
+          }
+        }
+      }
+      
+      img.src = "data:image/svg+xml;base64," + window.btoa(unescape(encodeURIComponent(svgStr)))
+    } catch (err) {
+      console.error("Fallback share error:", err)
+      alert("Please use the download button to save the QR code and share it manually.")
+    }
+  }
+
   if (!user) {
     return <p className="text-center py-10">Please log in to view your QR code.</p>
   }
@@ -100,6 +195,7 @@ const PatientQR = () => {
   </button>
 
   <button
+    onClick={shareQR}
     className="flex items-center justify-center gap-2 rounded-xl border border-blue-600 px-4 py-3 text-blue-600 font-medium shadow-sm hover:bg-blue-50 active:scale-95 transition"
   >
     <Share2 className="w-5 h-5" />

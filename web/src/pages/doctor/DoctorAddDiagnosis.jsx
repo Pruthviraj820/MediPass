@@ -1,8 +1,9 @@
 import { useState, useEffect } from 'react'
 import { useParams, useNavigate, useLocation } from 'react-router-dom'
-import { Pill, FileText, Save, Stethoscope } from 'lucide-react'
-import { doc, getDoc, collection, addDoc, serverTimestamp } from 'firebase/firestore'
-import { auth, db } from '../../firebase'
+import { Pill, FileText, Save, Stethoscope, Upload, X, File } from 'lucide-react'
+import { doc, getDoc, collection, addDoc, updateDoc, serverTimestamp } from 'firebase/firestore'
+import { ref, uploadBytes, getDownloadURL } from 'firebase/storage'
+import { auth, db, storage } from '../../firebase'
 
 const DoctorAddDiagnosis = () => {
   const { patientId } = useParams()
@@ -13,6 +14,8 @@ const DoctorAddDiagnosis = () => {
   const [patient, setPatient] = useState(null)
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
+  const [uploading, setUploading] = useState(false)
+  const [labReports, setLabReports] = useState([])
   
   const [formData, setFormData] = useState({
     diagnosis: '',
@@ -57,6 +60,50 @@ const DoctorAddDiagnosis = () => {
     }
   }
 
+  const handleFileSelect = (e) => {
+    const files = Array.from(e.target.files)
+    const newReports = files.map(file => ({
+      name: file.name,
+      file: file,
+      id: Date.now() + Math.random(),
+    }))
+    setLabReports([...labReports, ...newReports])
+    // Reset input
+    e.target.value = ''
+  }
+
+  const removeLabReport = (id) => {
+    setLabReports(labReports.filter(report => report.id !== id))
+  }
+
+  const uploadLabReports = async (medicalRecordId) => {
+    if (labReports.length === 0) return []
+
+    const uploadedUrls = []
+    setUploading(true)
+
+    try {
+      for (const report of labReports) {
+        const fileName = `${medicalRecordId}_${Date.now()}_${report.name}`
+        const storageRef = ref(storage, `medicalRecords/${patientId}/${fileName}`)
+        
+        await uploadBytes(storageRef, report.file)
+        const downloadURL = await getDownloadURL(storageRef)
+        uploadedUrls.push({
+          name: report.name,
+          url: downloadURL,
+        })
+      }
+    } catch (error) {
+      console.error('Error uploading lab reports:', error)
+      throw error
+    } finally {
+      setUploading(false)
+    }
+
+    return uploadedUrls
+  }
+
   const handleSubmit = async (e) => {
     e.preventDefault()
     
@@ -80,7 +127,7 @@ const DoctorAddDiagnosis = () => {
 
       // Save diagnosis to patient's medical records
       const medicalRecordsRef = collection(db, 'users', patientId, 'medicalRecords')
-      await addDoc(medicalRecordsRef, {
+      const medicalRecordRef = await addDoc(medicalRecordsRef, {
         diagnosis: formData.diagnosis.trim(),
         prescription: formData.prescription.trim() || null,
         dosage: formData.dosage.trim() || null,
@@ -89,7 +136,23 @@ const DoctorAddDiagnosis = () => {
         doctorName: doctorName,
         createdAt: serverTimestamp(),
         date: new Date().toISOString(),
+        labReports: [], // Will be updated after upload
       })
+
+      // Upload lab reports if any
+      let labReportUrls = []
+      if (labReports.length > 0) {
+        try {
+          labReportUrls = await uploadLabReports(medicalRecordRef.id)
+          // Update the medical record with lab report URLs
+          await updateDoc(medicalRecordRef, {
+            labReports: labReportUrls,
+          })
+        } catch (error) {
+          console.error('Error uploading lab reports:', error)
+          alert('Warning: Diagnosis saved but lab reports failed to upload')
+        }
+      }
 
       alert('Success: Diagnosis saved successfully!')
       navigate(`/doctor/patient/${patientId}`, {
@@ -183,6 +246,59 @@ const DoctorAddDiagnosis = () => {
           />
         </div>
 
+        {/* Lab Reports Upload */}
+        <div>
+          <label className="block text-lg font-semibold text-neutral-900 mb-4 flex items-center space-x-3">
+            <FileText className="w-6 h-6 text-primary-600" />
+            <span>Lab Reports / Medical Reports (Optional)</span>
+          </label>
+          <div className="space-y-4">
+            <label className="flex flex-col items-center justify-center w-full h-32 border-2 border-dashed border-primary-300 rounded-2xl cursor-pointer bg-primary-50 hover:bg-primary-100 transition-colors">
+              <div className="flex flex-col items-center justify-center pt-5 pb-6">
+                <Upload className="w-8 h-8 text-primary-600 mb-2" />
+                <p className="mb-2 text-sm font-semibold text-primary-700">
+                  Click to upload or drag and drop
+                </p>
+                <p className="text-xs text-neutral-500">PDF, Images (PNG, JPG, JPEG)</p>
+              </div>
+              <input
+                type="file"
+                className="hidden"
+                multiple
+                accept=".pdf,.png,.jpg,.jpeg,image/*,application/pdf"
+                onChange={handleFileSelect}
+                disabled={uploading || saving}
+              />
+            </label>
+            
+            {labReports.length > 0 && (
+              <div className="space-y-2">
+                {labReports.map((report) => (
+                  <div
+                    key={report.id}
+                    className="flex items-center justify-between p-4 bg-neutral-50 rounded-xl border border-neutral-200"
+                  >
+                    <div className="flex items-center space-x-3 flex-1 min-w-0">
+                      <File className="w-5 h-5 text-primary-600 flex-shrink-0" />
+                      <span className="text-sm font-medium text-neutral-700 truncate">
+                        {report.name}
+                      </span>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => removeLabReport(report.id)}
+                      disabled={uploading || saving}
+                      className="ml-3 p-2 hover:bg-red-50 rounded-lg transition-colors disabled:opacity-50"
+                    >
+                      <X className="w-5 h-5 text-red-600" />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+
         <div className="flex justify-end space-x-4 pt-8 border-t border-neutral-200">
           <button
             type="button"
@@ -196,13 +312,13 @@ const DoctorAddDiagnosis = () => {
           </button>
           <button
             type="submit"
-            disabled={saving}
+            disabled={saving || uploading}
             className={`btn-primary px-12 py-4 text-xl flex items-center space-x-3 shadow-2xl hover:shadow-3xl disabled:opacity-70 disabled:cursor-not-allowed`}
           >
-            {saving ? (
+            {(saving || uploading) ? (
               <>
                 <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
-                <span>Saving...</span>
+                <span>{uploading ? 'Uploading...' : 'Saving...'}</span>
               </>
             ) : (
               <>

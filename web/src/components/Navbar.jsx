@@ -39,6 +39,12 @@ const Navbar = ({ showPatientNav = false, showDoctorNav = false }) => {
                 <Barcode className="w-4 h-4" />
                 <span>QR Code</span>
               </Link>
+              <Link to="/patient/edit-profile" className={`flex items-center space-x-2 px-4 py-2 rounded-xl font-medium transition-all ${
+                location.pathname === '/patient/edit-profile' ? 'bg-primary-50 text-primary-600' : 'text-neutral-600 hover:text-primary-600'
+              }`}>
+                <User className="w-4 h-4" />
+                <span>Profile</span>
+              </Link>
             </div>
           )}
 
@@ -55,6 +61,12 @@ const Navbar = ({ showPatientNav = false, showDoctorNav = false }) => {
               }`}>
                 <Barcode className="w-4 h-4" />
                 <span>Scan QR</span>
+              </Link>
+              <Link to="/doctor/edit-profile" className={`flex items-center space-x-2 px-4 py-2 rounded-xl font-medium transition-all ${
+                location.pathname === '/doctor/edit-profile' ? 'bg-primary-50 text-primary-600' : 'text-neutral-600 hover:text-primary-600'
+              }`}>
+                <User className="w-4 h-4" />
+                <span>Profile</span>
               </Link>
             </div>
           )}
