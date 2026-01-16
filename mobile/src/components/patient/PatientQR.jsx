@@ -1,7 +1,10 @@
-import React, { useState } from 'react'
+import React, { useState, useRef } from 'react'
 import { View, Text, StyleSheet, TouchableOpacity, Alert } from 'react-native'
 import { Ionicons } from '@expo/vector-icons'
 import * as Clipboard from 'expo-clipboard'
+import * as Sharing from 'expo-sharing'
+import { File, Paths } from 'expo-file-system'
+import ViewShot from 'react-native-view-shot'
 import { useAuthStore } from '../../stores/authStore'
 import { mockPatients } from '../../data/mockData'
 import { colors } from '../../constants/colors'
@@ -19,6 +22,8 @@ import QRCode from "react-native-qrcode-svg";
 const PatientQR = ({ patientId }) => {
   const { user } = useAuthStore()
   const [copied, setCopied] = useState(false)
+  const [saving, setSaving] = useState(false)
+  const viewShotRef = useRef(null)
   
   // Use logged-in user's email as QR code value, or fallback to mock patient
   const patient = mockPatients.find(p => p.id === patientId)
@@ -36,6 +41,84 @@ const PatientQR = ({ patientId }) => {
     }
   }
 
+  const captureQRCode = async () => {
+    if (!viewShotRef.current) {
+      Alert.alert('Error', 'Unable to capture QR code')
+      return null
+    }
+
+    try {
+      const uri = await viewShotRef.current.capture()
+      return uri
+    } catch (error) {
+      console.error('Error capturing QR code:', error)
+      Alert.alert('Error', 'Failed to capture QR code image')
+      return null
+    }
+  }
+
+  const handleDownload = async () => {
+    setSaving(true)
+    try {
+      const uri = await captureQRCode()
+      if (!uri) {
+        setSaving(false)
+        return
+      }
+
+      const filename = `MediPass_QR_${Date.now()}.png`
+      const fileUri = `${Paths.documentDirectory}${filename}`
+
+      // Copy the captured image to a permanent location using new API
+      const sourceFile = new File(uri)
+      await sourceFile.copy(fileUri)
+
+      // Check if sharing is available
+      const isAvailable = await Sharing.isAvailableAsync()
+      if (isAvailable) {
+        await Sharing.shareAsync(fileUri, {
+          mimeType: 'image/png',
+          dialogTitle: 'Save QR Code',
+        })
+        Alert.alert('Success', 'QR code saved successfully!')
+      } else {
+        Alert.alert('Success', `QR code saved to: ${fileUri}`)
+      }
+    } catch (error) {
+      console.error('Error downloading QR code:', error)
+      Alert.alert('Error', 'Failed to download QR code')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  const handleShare = async () => {
+    setSaving(true)
+    try {
+      const uri = await captureQRCode()
+      if (!uri) {
+        setSaving(false)
+        return
+      }
+
+      // Check if sharing is available
+      const isAvailable = await Sharing.isAvailableAsync()
+      if (isAvailable) {
+        await Sharing.shareAsync(uri, {
+          mimeType: 'image/png',
+          dialogTitle: 'Share QR Code',
+        })
+      } else {
+        Alert.alert('Error', 'Sharing is not available on this device')
+      }
+    } catch (error) {
+      console.error('Error sharing QR code:', error)
+      Alert.alert('Error', 'Failed to share QR code')
+    } finally {
+      setSaving(false)
+    }
+  }
+
   // Fallback QR component
   const FallbackQR = () => (
     <View style={styles.fallbackQR}>
@@ -48,18 +131,24 @@ const PatientQR = ({ patientId }) => {
   return (
     <View style={styles.container}>
       <View style={styles.card}>
-        <View style={styles.qrContainer}>
-          {QRCode ? (
-            <QRCode
-              value={qrValue}
-              size={200}
-              backgroundColor={colors.white}
-              color={colors.primary[600]}
-            />
-          ) : (
-            <FallbackQR />
-          )}
-        </View>
+        <ViewShot
+          ref={viewShotRef}
+          options={{ format: 'png', quality: 1.0 }}
+          style={styles.qrContainer}
+        >
+          <View style={styles.qrInnerContainer}>
+            {QRCode ? (
+              <QRCode
+                value={qrValue}
+                size={200}
+                backgroundColor={colors.white}
+                color={colors.primary[600]}
+              />
+            ) : (
+              <FallbackQR />
+            )}
+          </View>
+        </ViewShot>
         
         <Text style={styles.title}>Your MediPass QR</Text>
         <Text style={styles.subtitle}>Show this QR code to healthcare providers</Text>
@@ -80,14 +169,42 @@ const PatientQR = ({ patientId }) => {
           </TouchableOpacity>
         </View>
 
+        {}
+        
         <View style={styles.buttonRow}>
-          <TouchableOpacity style={styles.button}>
-            <Ionicons name="download" size={20} color={colors.white} />
-            <Text style={styles.buttonText}>Download</Text>
+          <TouchableOpacity 
+            style={[styles.button, saving && styles.buttonDisabled]}
+            onPress={handleDownload}
+            disabled={saving}
+          >
+            {saving ? (
+              <>
+                <Ionicons name="hourglass" size={20} color={colors.white} />
+                <Text style={styles.buttonText}>Saving...</Text>
+              </>
+            ) : (
+              <>
+                <Ionicons name="download" size={20} color={colors.white} />
+                <Text style={styles.buttonText}>Download</Text>
+              </>
+            )}
           </TouchableOpacity>
-          <TouchableOpacity style={[styles.button, styles.buttonSecondary]}>
-            <Ionicons name="share" size={20} color={colors.primary[600]} />
-            <Text style={[styles.buttonText, styles.buttonTextSecondary]}>Share</Text>
+          <TouchableOpacity 
+            style={[styles.button, styles.buttonSecondary, saving && styles.buttonDisabled]}
+            onPress={handleShare}
+            disabled={saving}
+          >
+            {saving ? (
+              <>
+                <Ionicons name="hourglass" size={20} color={colors.primary[600]} />
+                <Text style={[styles.buttonText, styles.buttonTextSecondary]}>Sharing...</Text>
+              </>
+            ) : (
+              <>
+                <Ionicons name="share" size={20} color={colors.primary[600]} />
+                <Text style={[styles.buttonText, styles.buttonTextSecondary]}>Share</Text>
+              </>
+            )}
           </TouchableOpacity>
         </View>
 
@@ -120,12 +237,18 @@ const styles = StyleSheet.create({
   qrContainer: {
     width: 240,
     height: 240,
+    marginBottom: 24,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  qrInnerContainer: {
+    width: 240,
+    height: 240,
     backgroundColor: colors.white,
     borderRadius: 16,
     padding: 20,
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 24,
     shadowColor: colors.black,
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
@@ -194,6 +317,9 @@ const styles = StyleSheet.create({
   },
   buttonTextSecondary: {
     color: colors.primary[600],
+  },
+  buttonDisabled: {
+    opacity: 0.6,
   },
   securityBadge: {
     flexDirection: 'row',

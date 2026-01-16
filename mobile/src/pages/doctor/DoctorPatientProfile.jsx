@@ -8,6 +8,7 @@ import {
   ActivityIndicator,
   Alert,
   Share,
+  Linking,
 } from 'react-native'
 import { useRoute, useNavigation } from '@react-navigation/native'
 import { Ionicons } from '@expo/vector-icons'
@@ -348,8 +349,24 @@ const DoctorPatientProfile = () => {
             </View>
             {patient.emergencyContacts.map((contact, index) => (
               <View key={index} style={styles.contactCard}>
-                <Text style={styles.contactName}>{contact.name || 'Unknown'}</Text>
-                <Text style={styles.contactPhone}>{contact.phone || ''}</Text>
+                <View style={styles.contactInfo}>
+                  <Text style={styles.contactName}>{contact.name || 'Unknown'}</Text>
+                  <Text style={styles.contactPhone}>{contact.phone || ''}</Text>
+                </View>
+                {contact.phone && (
+                  <TouchableOpacity
+                    style={styles.phoneButton}
+                    onPress={() => {
+                      const phoneNumber = contact.phone.replace(/[^\d+]/g, '')
+                      Linking.openURL(`tel:${phoneNumber}`).catch((err) => {
+                        console.error('Error opening phone dialer:', err)
+                        Alert.alert('Error', 'Unable to open phone dialer')
+                      })
+                    }}
+                  >
+                    <Ionicons name="call" size={20} color={colors.white} />
+                  </TouchableOpacity>
+                )}
               </View>
             ))}
           </View>
@@ -587,6 +604,12 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     padding: 16,
     marginBottom: 12,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  contactInfo: {
+    flex: 1,
   },
   contactName: {
     fontSize: 18,
@@ -597,6 +620,12 @@ const styles = StyleSheet.create({
   contactPhone: {
     fontSize: 16,
     color: colors.success[700],
+  },
+  phoneButton: {
+    backgroundColor: colors.success[600],
+    borderRadius: 12,
+    padding: 10,
+    marginLeft: 12,
   },
   prescriptionsSection: {
     gap: 16,

@@ -6,6 +6,8 @@ import {
   ScrollView,
   ActivityIndicator,
   TouchableOpacity,
+  Linking,
+  Alert,
 } from 'react-native'
 import { Ionicons } from '@expo/vector-icons'
 import { onAuthStateChanged } from 'firebase/auth'
@@ -157,7 +159,7 @@ const PatientEmergencyProfile = ({ navigation }) => {
           </View>
         </View>
 
-        {renderList('Emergency Contacts', 'call', profile.emergencyContacts, colors?.success?.[600], 'No emergency contacts')}
+        {renderEmergencyContacts(profile.emergencyContacts)}
         {renderList('Allergies', 'warning', profile.allergies, colors?.neutral?.[700], 'No known allergies')}
         {renderList('Medical Conditions', 'fitness', profile.medicalConditions, colors?.error?.[600], 'No known conditions')}
 
@@ -195,6 +197,44 @@ const renderList = (title, icon, items, color, empty) => (
     )}
   </View>
 )
+
+const renderEmergencyContacts = (contacts) => {
+  if (!contacts || contacts.length === 0) {
+    return renderList('Emergency Contacts', 'call', [], colors?.success?.[600], 'No emergency contacts')
+  }
+
+  return (
+    <View style={styles.section}>
+      <View style={styles.sectionHeader}>
+        <Ionicons name="call" size={22} color={colors?.success?.[600] || '#333'} />
+        <Text style={styles.sectionTitle}>Emergency Contacts</Text>
+      </View>
+      {contacts.map((contact, i) => (
+        <View key={i} style={styles.contactItem}>
+          <View style={styles.contactInfo}>
+            <Text style={styles.contactText}>
+              {typeof contact === 'string' ? contact : `${contact.name} — ${contact.phone}`}
+            </Text>
+          </View>
+          {typeof contact === 'object' && contact.phone && (
+            <TouchableOpacity
+              style={styles.phoneButton}
+              onPress={() => {
+                const phoneNumber = contact.phone.replace(/[^\d+]/g, '')
+                Linking.openURL(`tel:${phoneNumber}`).catch((err) => {
+                  console.error('Error opening phone dialer:', err)
+                  Alert.alert('Error', 'Unable to open phone dialer')
+                })
+              }}
+            >
+              <Ionicons name="call" size={18} color={colors?.white || '#FFF'} />
+            </TouchableOpacity>
+          )}
+        </View>
+      ))}
+    </View>
+  )
+}
 
 /* ------------------ STYLES ------------------ */
 
@@ -241,6 +281,25 @@ const styles = StyleSheet.create({
   },
   itemText: { fontSize: 15, fontWeight: '600' },
   empty: { fontStyle: 'italic', color: '#888' },
+  contactItem: {
+    backgroundColor: '#F4F4F5',
+    padding: 14,
+    borderRadius: 12,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  contactInfo: {
+    flex: 1,
+  },
+  contactText: { fontSize: 15, fontWeight: '600' },
+  phoneButton: {
+    backgroundColor: colors?.success?.[600] || '#10B981',
+    borderRadius: 10,
+    padding: 10,
+    marginLeft: 12,
+  },
 
   editBtn: {
     flexDirection: 'row',

@@ -1,8 +1,8 @@
 import React, { useEffect, useMemo, useState } from 'react'
-import { View, Text, StyleSheet, ScrollView, ActivityIndicator } from 'react-native'
+import { View, Text, StyleSheet, ScrollView, ActivityIndicator, TouchableOpacity, Alert } from 'react-native'
 import { Ionicons } from '@expo/vector-icons'
 import { format } from 'date-fns'
-import { collection, onSnapshot, orderBy, query } from 'firebase/firestore'
+import { collection, onSnapshot, orderBy, query, doc, updateDoc } from 'firebase/firestore'
 import Navbar from '../../components/common/Navbar'
 import { colors } from '../../constants/colors'
 import { auth, db } from '../../services/firebase'
@@ -41,19 +41,53 @@ const PatientPrescriptions = () => {
     return () => unsub()
   }, [])
 
-  const cards = useMemo(() => {
-    return prescriptions.map((p) => {
+  const handleMarkComplete = async (prescriptionId, isCompleted) => {
+    try {
+      const user = auth?.currentUser
+      if (!user || !db) return
+
+      const prescriptionRef = doc(db, 'users', user.uid, 'prescriptions', prescriptionId)
+      await updateDoc(prescriptionRef, {
+        isCompleted: !isCompleted,
+        completedAt: !isCompleted ? new Date() : null,
+      })
+    } catch (error) {
+      console.error('Error updating prescription:', error)
+      Alert.alert('Error', 'Failed to update prescription status')
+    }
+  }
+
+  const { activePrescriptions, completedPrescriptions } = useMemo(() => {
+    const active = []
+    const completed = []
+
+    prescriptions.forEach((p) => {
       const createdAtDate =
         p.createdAt && typeof p.createdAt?.toDate === 'function'
           ? p.createdAt.toDate()
           : null
       const timeText = createdAtDate ? format(createdAtDate, 'dd MMM yyyy, HH:mm') : '—'
 
-      return {
+      const completedAtDate =
+        p.completedAt && typeof p.completedAt?.toDate === 'function'
+          ? p.completedAt.toDate()
+          : null
+      const completedTimeText = completedAtDate ? format(completedAtDate, 'dd MMM yyyy') : null
+
+      const card = {
         ...p,
         timeText,
+        completedTimeText,
+      }
+
+      if (p.isCompleted) {
+        completed.push(card)
+      } else {
+        active.push(card)
       }
     })
+
+    return { activePrescriptions: active, completedPrescriptions: completed }
   }, [prescriptions])
 
   return (
@@ -76,7 +110,7 @@ const PatientPrescriptions = () => {
               <ActivityIndicator size="large" color={colors.primary[600]} />
               <Text style={styles.loadingText}>Loading prescriptions...</Text>
             </View>
-          ) : cards.length === 0 ? (
+          ) : activePrescriptions.length === 0 && completedPrescriptions.length === 0 ? (
             <View style={styles.center}>
               <Ionicons name="document-text-outline" size={64} color={colors.neutral[400]} />
               <Text style={styles.emptyTitle}>No prescriptions yet</Text>
@@ -85,52 +119,98 @@ const PatientPrescriptions = () => {
               </Text>
             </View>
           ) : (
-            cards.map((prescription) => (
-            <View key={prescription.id} style={styles.card}>
-              <View style={styles.cardHeader}>
-                <Text style={styles.cardTitle}>{prescription.name}</Text>
-                <View
-                  style={[
-                    styles.refillBadge,
-                    prescription.refills > 0 ? styles.refillBadgeActive : styles.refillBadgeWarning,
-                  ]}
-                >
-                  <Text style={styles.refillText}>{prescription.refills ?? 0} refills</Text>
-                </View>
-              </View>
-              
-              <View style={styles.details}>
-                <View style={styles.detailRow}>
-                  <Text style={styles.detailLabel}>Dosage:</Text>
-                  <Text style={styles.detailValue}>{prescription.dosage || '—'}</Text>
-                </View>
-                <View style={styles.detailRow}>
-                  <Text style={styles.detailLabel}>Frequency:</Text>
-                  <Text style={styles.detailValue}>{prescription.frequency || '—'}</Text>
-                </View>
-                <View style={styles.detailRow}>
-                  <Text style={styles.detailLabel}>Duration:</Text>
-                  <Text style={styles.detailValue}>{prescription.duration || '—'}</Text>
-                </View>
-                <View style={styles.detailRow}>
-                  <Text style={styles.detailLabel}>Prescribed:</Text>
-                  <Text style={styles.detailValue}>{prescription.timeText}</Text>
-                </View>
-              </View>
+            <>
+              {/* Active Prescriptions */}
+              {activePrescriptions.length > 0 && (
+                <>
+                  {activePrescriptions.map((prescription) => (
+                    <View key={prescription.id} style={styles.card}>
+                      <View style={styles.cardHeader}>
+                        <Text style={styles.cardTitle}>{prescription.name}</Text>
+                        <View
+                          style={[
+                            styles.refillBadge,
+                            prescription.refills > 0 ? styles.refillBadgeActive : styles.refillBadgeWarning,
+                          ]}
+                        >
+                          <Text style={styles.refillText}>{prescription.refills ?? 0} refills</Text>
+                        </View>
+                      </View>
+                      
+                      <View style={styles.details}>
+                        <View style={styles.detailRow}>
+                          <Text style={styles.detailLabel}>Dosage:</Text>
+                          <Text style={styles.detailValue}>{prescription.dosage || '—'}</Text>
+                        </View>
+                        <View style={styles.detailRow}>
+                          <Text style={styles.detailLabel}>Frequency:</Text>
+                          <Text style={styles.detailValue}>{prescription.frequency || '—'}</Text>
+                        </View>
+                        <View style={styles.detailRow}>
+                          <Text style={styles.detailLabel}>Duration:</Text>
+                          <Text style={styles.detailValue}>{prescription.duration || '—'}</Text>
+                        </View>
+                        <View style={styles.detailRow}>
+                          <Text style={styles.detailLabel}>Prescribed:</Text>
+                          <Text style={styles.detailValue}>{prescription.timeText}</Text>
+                        </View>
+                      </View>
 
-              <View style={styles.instructionsContainer}>
-                <Text style={styles.instructions}>{prescription.instructions || '—'}</Text>
-              </View>
+                      <View style={styles.instructionsContainer}>
+                        <Text style={styles.instructions}>{prescription.instructions || '—'}</Text>
+                      </View>
 
-              <View style={styles.footer}>
-                <View style={styles.timeContainer}>
-                  <Ionicons name="time" size={20} color={colors.primary[600]} />
-                  <Text style={styles.timeText}>{prescription.doctorName ? `Dr. ${prescription.doctorName}` : 'Doctor'}</Text>
+                      <View style={styles.footer}>
+                        <View style={styles.timeContainer}>
+                          <Ionicons name="time" size={20} color={colors.primary[600]} />
+                          <Text style={styles.timeText}>{prescription.doctorName ? `Dr. ${prescription.doctorName}` : 'Doctor'}</Text>
+                        </View>
+                        <TouchableOpacity
+                          onPress={() => handleMarkComplete(prescription.id, prescription.isCompleted)}
+                          style={styles.completeButton}
+                        >
+                          <Ionicons name="checkmark-circle-outline" size={28} color={colors.primary[600]} />
+                          <Text style={styles.completeButtonText}>Mark Complete</Text>
+                        </TouchableOpacity>
+                      </View>
+                    </View>
+                  ))}
+                </>
+              )}
+
+              {/* Completed Prescriptions - Minimized Section */}
+              {completedPrescriptions.length > 0 && (
+                <View style={styles.completedSection}>
+                  <View style={styles.completedHeader}>
+                    <Ionicons name="checkmark-done-circle" size={24} color={colors.neutral[500]} />
+                    <Text style={styles.completedTitle}>Completed Medications ({completedPrescriptions.length})</Text>
+                  </View>
+                  <View style={styles.completedList}>
+                    {completedPrescriptions.map((prescription) => (
+                      <View key={prescription.id} style={styles.completedCard}>
+                        <View style={styles.completedCardContent}>
+                          <View style={styles.completedCardLeft}>
+                            <Ionicons name="checkmark-circle" size={20} color={colors.success[600]} />
+                            <View style={styles.completedCardInfo}>
+                              <Text style={styles.completedCardName}>{prescription.name}</Text>
+                              {prescription.completedTimeText && (
+                                <Text style={styles.completedCardDate}>Completed on {prescription.completedTimeText}</Text>
+                              )}
+                            </View>
+                          </View>
+                          <TouchableOpacity
+                            onPress={() => handleMarkComplete(prescription.id, prescription.isCompleted)}
+                            style={styles.undoButton}
+                          >
+                            <Ionicons name="arrow-undo" size={18} color={colors.primary[600]} />
+                          </TouchableOpacity>
+                        </View>
+                      </View>
+                    ))}
+                  </View>
                 </View>
-                <Ionicons name="checkmark-circle" size={32} color={colors.success[500]} />
-              </View>
-            </View>
-            ))
+              )}
+            </>
           )}
         </View>
       </ScrollView>
@@ -278,6 +358,76 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: '600',
     color: colors.primary[600],
+  },
+  completeButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    backgroundColor: colors.primary[50],
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: colors.primary[200],
+  },
+  completeButtonText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: colors.primary[600],
+  },
+  completedSection: {
+    marginTop: 8,
+    paddingTop: 24,
+    borderTopWidth: 1,
+    borderTopColor: colors.neutral[200],
+  },
+  completedHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: 16,
+  },
+  completedTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: colors.neutral[500],
+  },
+  completedList: {
+    gap: 12,
+  },
+  completedCard: {
+    backgroundColor: colors.neutral[100],
+    borderRadius: 12,
+    padding: 12,
+    opacity: 0.7,
+  },
+  completedCardContent: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  completedCardLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    flex: 1,
+  },
+  completedCardInfo: {
+    flex: 1,
+  },
+  completedCardName: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: colors.neutral[700],
+    textDecorationLine: 'line-through',
+  },
+  completedCardDate: {
+    fontSize: 12,
+    color: colors.neutral[500],
+    marginTop: 2,
+  },
+  undoButton: {
+    padding: 6,
   },
 })
 
